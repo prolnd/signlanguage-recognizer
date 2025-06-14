@@ -1,4 +1,4 @@
-package com.example.signtranslator
+package com.example.signtranslator.utils
 
 import android.content.Context
 import android.graphics.Bitmap

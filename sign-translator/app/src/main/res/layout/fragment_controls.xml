@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <!-- Detection Display - Compact -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#F5F5F5"
+        android:padding="8dp"
+        android:layout_marginBottom="8dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvCurrentLetter"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Detected: -"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvConfidence"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Confidence: -"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
+        <!-- Auto Add Toggle - Inline -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Auto"
+                android:textSize="12sp" />
+
+            <Switch
+                android:id="@+id/switchAutoAdd"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:scaleX="0.8"
+                android:scaleY="0.8" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Sentence Display - Compact -->
+    <TextView
+        android:id="@+id/tvSentence"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Sentence: "
+        android:textSize="14sp"
+        android:padding="8dp"
+        android:background="@android:color/white"
+        android:layout_marginBottom="8dp"
+        android:minHeight="36dp"
+        android:gravity="center_vertical"
+        android:maxLines="2"
+        android:ellipsize="end" />
+
+    <!-- Control Buttons - Compact Grid -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- First Row: Add Letter and Add Space -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="6dp">
+
+            <Button
+                android:id="@+id/btnAddLetter"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="Add Letter"
+                android:textSize="12sp"
+                android:layout_marginEnd="4dp"
+                android:background="#2196F3"
+                android:textColor="@android:color/white" />
+
+            <Button
+                android:id="@+id/btnAddSpace"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="Space"
+                android:textSize="12sp"
+                android:layout_marginStart="4dp"
+                android:background="#E3F2FD"
+                android:textColor="#2196F3" />
+
+        </LinearLayout>
+
+        <!-- Second Row: Save to History -->
+        <Button
+            android:id="@+id/btnSaveToHistory"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:text="Save to History"
+            android:textSize="12sp"
+            android:layout_marginBottom="6dp"
+            android:background="#4CAF50"
+            android:textColor="@android:color/white" />
+
+        <!-- Third Row: Clear -->
+        <Button
+            android:id="@+id/btnClear"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:text="Clear"
+            android:textSize="12sp"
+            android:background="#F44336"
+            android:textColor="@android:color/white" />
+
+    </LinearLayout>
+
+</LinearLayout>
