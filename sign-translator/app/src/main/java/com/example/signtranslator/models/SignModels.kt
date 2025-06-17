@@ -12,3 +12,9 @@ data class DetectionState(
     val isAutoAddEnabled: Boolean = false,
     val isProcessing: Boolean = false
 )
+
+data class SignLetter(
+    val letter: Char,
+    val imageResourceId: Int, // Resource ID for the sign letter image
+    val description: String = "Sign for letter $letter"
+)
