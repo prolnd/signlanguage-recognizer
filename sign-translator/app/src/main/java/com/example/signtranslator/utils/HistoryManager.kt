@@ -4,332 +4,344 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.util.Log
+import com.example.signtranslator.models.SignFrame
 import com.example.signtranslator.models.SignHistoryEntry
 import com.example.signtranslator.models.TranslationHistoryEntry
-import com.example.signtranslator.models.SignFrame
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.io.File
 import java.io.FileOutputStream
-import java.io.IOException
 
+/**
+ * Manages local storage of translation history using SharedPreferences for metadata
+ * and internal storage for compressed images. Handles saving, loading, and cleanup
+ * of translation entries with automatic size management.
+ */
 class HistoryManager(private val context: Context) {
 
-    private val historyList = mutableListOf<TranslationHistoryEntry>()
-    private val sharedPrefs: SharedPreferences = context.getSharedPreferences("history_prefs", Context.MODE_PRIVATE)
+    private val sharedPrefs: SharedPreferences = context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
     private val gson = Gson()
 
     companion object {
-        private const val TAG = "HistoryManager"
-        private const val HISTORY_KEY = "translation_history"
+        private const val PREF_FILE = "translation_history_prefs"
+        private const val PREF_HISTORY = "translation_history"
         private const val MAX_HISTORY_ENTRIES = 100
-        private const val IMAGES_DIR = "history_images"
     }
 
-    init {
-        loadHistoryFromStorage()
-    }
-
-    fun addTranslation(sentence: String, signEntries: List<SignHistoryEntry>) {
-        if (sentence.isBlank() || signEntries.isEmpty()) return
-
-        Log.d(TAG, "=== ADDING TRANSLATION ===")
-        Log.d(TAG, "Sentence: '$sentence'")
-        Log.d(TAG, "Sign entries: ${signEntries.size}")
-
-        signEntries.forEachIndexed { index, entry ->
-            val bitmap = entry.bestFrame.bitmap
-            Log.d(TAG, "  [$index] Sign: '${entry.sign}', Bitmap: ${bitmap?.let { "${it.width}x${it.height}, recycled: ${it.isRecycled}" } ?: "null"}")
-        }
-
-        val entry = TranslationHistoryEntry(
-            sentence = sentence,
-            signEntries = signEntries
-        )
-
-        historyList.add(0, entry) // Add to beginning
-
-        // Keep only last entries
-        if (historyList.size > MAX_HISTORY_ENTRIES) {
-            val removed = historyList.removeAt(historyList.size - 1)
-            cleanupEntryImages(removed)
-        }
-
-        saveHistoryToStorage()
-        Log.d(TAG, "Translation added successfully. Total entries: ${historyList.size}")
-    }
-
-    fun getHistory(): List<TranslationHistoryEntry> {
-        Log.d(TAG, "Getting history: ${historyList.size} entries")
-        historyList.forEachIndexed { index, entry ->
-            Log.d(TAG, "  [$index] '${entry.sentence}' - ${entry.signEntries.size} signs")
-            entry.signEntries.forEach { signEntry ->
-                val bitmap = signEntry.bestFrame.bitmap
-                Log.d(TAG, "    Sign: '${signEntry.sign}', Bitmap: ${bitmap?.let { "${it.width}x${it.height}" } ?: "null"}")
+    /**
+     * Add a new translation to history with image compression and storage
+     */
+    fun addTranslation(sentence: String, signEntries: List<SignHistoryEntry>): Boolean {
+        return try {
+            if (sentence.isBlank() || signEntries.isEmpty()) {
+                return false
             }
-        }
-        return historyList.toList()
-    }
 
-    fun clearHistory() {
-        historyList.forEach { entry ->
-            cleanupEntryImages(entry)
-        }
-        historyList.clear()
-        clearStoredHistory()
-    }
+            val entryId = generateEntryId()
+            val timestamp = System.currentTimeMillis()
 
-    fun getEntry(id: String): TranslationHistoryEntry? {
-        val entry = historyList.find { it.id == id }
-        Log.d(TAG, "Getting entry by ID: $id, found: ${entry != null}")
-        return entry
-    }
+            // Save images and build sign entries with metadata
+            val savedSignEntries = mutableListOf<SignHistoryEntry>()
 
-    fun deleteEntry(id: String): Boolean {
-        val entry = historyList.find { it.id == id }
-        return if (entry != null) {
-            historyList.remove(entry)
-            cleanupEntryImages(entry)
-            saveHistoryToStorage()
-            true
-        } else {
+            signEntries.forEachIndexed { index, signEntry ->
+                try {
+                    if (signEntry.signFrame.bitmap == null) {
+                        return@forEachIndexed
+                    }
+
+                    // Use consistent filename format
+                    val filename = "${entryId}_${signEntry.sign}_${index}.jpg"
+                    val file = File(context.filesDir, filename)
+
+                    // Compress and save image
+                    val outputStream = FileOutputStream(file)
+                    val compressed = signEntry.signFrame.bitmap!!.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
+                    outputStream.close()
+
+                    if (compressed) {
+                        // Create sign entry with metadata for loading
+                        val savedSignEntry = SignHistoryEntry(
+                            sign = signEntry.sign,
+                            signFrame = SignFrame(
+                                sign = signEntry.sign,
+                                confidence = signEntry.signFrame.confidence,
+                                bitmap = signEntry.signFrame.bitmap,
+                                timestamp = signEntry.signFrame.timestamp
+                            ),
+                            sentence = signEntry.sentence,
+                            timestamp = signEntry.timestamp,
+                            metadata = mapOf(
+                                "filename" to filename,
+                                "index" to index
+                            )
+                        )
+
+                        savedSignEntries.add(savedSignEntry)
+                    }
+
+                } catch (e: Exception) {
+                    // Continue with other signs even if one fails
+                }
+            }
+
+            if (savedSignEntries.isEmpty()) {
+                return false
+            }
+
+            // Create translation entry
+            val translationEntry = TranslationHistoryEntry(
+                id = entryId,
+                sentence = sentence,
+                signEntries = savedSignEntries,
+                timestamp = timestamp
+            )
+
+            // Load and update history
+            val currentHistory = getHistory().toMutableList()
+            currentHistory.add(0, translationEntry)
+
+            // Apply size limit and cleanup old entries
+            while (currentHistory.size > MAX_HISTORY_ENTRIES) {
+                val removedEntry = currentHistory.removeAt(currentHistory.size - 1)
+                cleanupEntryFiles(removedEntry)
+            }
+
+            // Save updated history
+            return saveHistoryToPrefs(currentHistory)
+
+        } catch (e: Exception) {
             false
         }
     }
 
-    private fun saveHistoryToStorage() {
+    /**
+     * Retrieve all translation history entries
+     */
+    fun getHistory(): List<TranslationHistoryEntry> {
+        return try {
+            val jsonString = sharedPrefs.getString(PREF_HISTORY, null) ?: return emptyList()
+
+            // Parse JSON data
+            val type = object : TypeToken<List<Map<String, Any>>>() {}.type
+            val historyData: List<Map<String, Any>> = gson.fromJson(jsonString, type)
+
+            // Convert to TranslationHistoryEntry objects
+            val translations = historyData.mapIndexedNotNull { index, entryMap ->
+                try {
+                    val id = entryMap["id"] as? String ?: return@mapIndexedNotNull null
+                    val sentence = entryMap["sentence"] as? String ?: return@mapIndexedNotNull null
+                    val timestamp = when (val ts = entryMap["timestamp"]) {
+                        is Number -> ts.toLong()
+                        is String -> ts.toLongOrNull() ?: System.currentTimeMillis()
+                        else -> System.currentTimeMillis()
+                    }
+
+                    @Suppress("UNCHECKED_CAST")
+                    val signEntriesData = entryMap["signEntries"] as? List<Map<String, Any>> ?: emptyList()
+
+                    val signEntries = signEntriesData.mapIndexedNotNull { signIndex, signMap ->
+                        loadSignEntryFromData(signMap, id, signIndex, sentence, timestamp)
+                    }
+
+                    if (signEntries.isNotEmpty()) {
+                        TranslationHistoryEntry(
+                            id = id,
+                            sentence = sentence,
+                            signEntries = signEntries,
+                            timestamp = timestamp
+                        )
+                    } else {
+                        null
+                    }
+                } catch (e: Exception) {
+                    null
+                }
+            }
+
+            translations
+
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * Get a specific history entry by ID
+     */
+    fun getEntry(id: String): TranslationHistoryEntry? {
+        return try {
+            getHistory().find { it.id == id }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Delete a specific history entry and its associated files
+     */
+    fun deleteEntry(id: String): Boolean {
+        return try {
+            val currentHistory = getHistory().toMutableList()
+            val entryToRemove = currentHistory.find { it.id == id } ?: return false
+
+            // Remove from list
+            currentHistory.removeAll { it.id == id }
+
+            // Delete associated image files
+            cleanupEntryFiles(entryToRemove)
+
+            // Save updated history
+            saveHistoryToPrefs(currentHistory)
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Clear all history entries and associated files
+     */
+    fun clearHistory() {
         try {
-            Log.d(TAG, "=== SAVING HISTORY TO STORAGE ===")
-            Log.d(TAG, "Saving ${historyList.size} history entries")
+            // Delete all image files
+            val files = context.filesDir.listFiles()
+            files?.filter { it.name.endsWith(".jpg") }?.forEach { file ->
+                file.delete()
+            }
 
-            // Save metadata (without bitmaps) to SharedPreferences
-            val historyMetadata = historyList.map { entry ->
-                Log.d(TAG, "Processing entry: '${entry.sentence}' with ${entry.signEntries.size} signs")
+            // Clear SharedPreferences
+            sharedPrefs.edit().remove(PREF_HISTORY).apply()
+        } catch (e: Exception) {
+            // Handle error silently
+        }
+    }
 
-                HistoryMetadata(
-                    id = entry.id,
-                    sentence = entry.sentence,
-                    timestamp = entry.timestamp,
-                    signMetadata = entry.signEntries.mapIndexed { index, signEntry ->
-                        Log.d(TAG, "  Saving sign [$index]: '${signEntry.sign}'")
-                        val imageId = saveFrameImage(signEntry.bestFrame, entry.id)
-                        Log.d(TAG, "  Image ID: '$imageId'")
+    /**
+     * Load sign entry from stored data with multiple filename patterns
+     */
+    private fun loadSignEntryFromData(
+        signMap: Map<String, Any>,
+        entryId: String,
+        signIndex: Int,
+        sentence: String,
+        entryTimestamp: Long
+    ): SignHistoryEntry? {
+        try {
+            val sign = signMap["sign"] as? String ?: return null
+            val confidence = when (val conf = signMap["confidence"]) {
+                is Number -> conf.toFloat()
+                is String -> conf.toFloatOrNull() ?: 0f
+                else -> 0f
+            }
+            val signTimestamp = when (val ts = signMap["timestamp"]) {
+                is Number -> ts.toLong()
+                is String -> ts.toLongOrNull() ?: entryTimestamp
+                else -> entryTimestamp
+            }
+            val signSentence = signMap["sentence"] as? String ?: sentence
 
-                        SignMetadata(
-                            sign = signEntry.sign,
-                            timestamp = signEntry.timestamp,
-                            sentence = signEntry.sentence,
-                            bestFrameId = imageId,
-                            bestFrameConfidence = signEntry.bestFrame.confidence,
-                            frameCount = signEntry.allFrames.size
+            // Try multiple filename patterns to find the image
+            val possibleFilenames = listOf(
+                "${entryId}_${sign}_${signIndex}.jpg",  // Current format
+                "${entryId}_${sign}_${signTimestamp}.jpg",  // Legacy format
+                "${entryId}_${sign}.jpg"  // Fallback format
+            )
+
+            val bitmap = possibleFilenames.firstNotNullOfOrNull { filename ->
+                loadBitmapFromFile(filename)
+            }
+
+            return if (bitmap != null) {
+                val signFrame = SignFrame(
+                    sign = sign,
+                    confidence = confidence,
+                    bitmap = bitmap,
+                    timestamp = signTimestamp
+                )
+
+                SignHistoryEntry(
+                    sign = sign,
+                    signFrame = signFrame,
+                    sentence = signSentence,
+                    timestamp = signTimestamp
+                )
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            return null
+        }
+    }
+
+    /**
+     * Clean up image files associated with a history entry
+     */
+    private fun cleanupEntryFiles(entry: TranslationHistoryEntry) {
+        entry.signEntries.forEachIndexed { index, signEntry ->
+            val possibleFilenames = listOf(
+                "${entry.id}_${signEntry.sign}_${index}.jpg",
+                "${entry.id}_${signEntry.sign}_${signEntry.timestamp}.jpg",
+                "${entry.id}_${signEntry.sign}.jpg"
+            )
+
+            possibleFilenames.forEach { filename ->
+                val file = File(context.filesDir, filename)
+                if (file.exists()) {
+                    file.delete()
+                }
+            }
+        }
+    }
+
+    /**
+     * Save history data to SharedPreferences
+     */
+    private fun saveHistoryToPrefs(history: List<TranslationHistoryEntry>): Boolean {
+        return try {
+            val historyData = history.map { entry ->
+                mapOf(
+                    "id" to entry.id,
+                    "sentence" to entry.sentence,
+                    "timestamp" to entry.timestamp,
+                    "signEntries" to entry.signEntries.map { signEntry ->
+                        mapOf(
+                            "sign" to signEntry.sign,
+                            "confidence" to signEntry.signFrame.confidence,
+                            "timestamp" to signEntry.timestamp,
+                            "sentence" to signEntry.sentence
                         )
                     }
                 )
             }
 
-            val json = gson.toJson(historyMetadata)
-            sharedPrefs.edit().putString(HISTORY_KEY, json).apply()
-            Log.d(TAG, "History metadata saved successfully")
+            val jsonString = gson.toJson(historyData)
+            val editor = sharedPrefs.edit()
+            editor.putString(PREF_HISTORY, jsonString)
+            editor.commit() // Use commit for synchronous save
         } catch (e: Exception) {
-            Log.e(TAG, "Error saving history", e)
+            false
         }
     }
 
-    private fun loadHistoryFromStorage() {
-        try {
-            Log.d(TAG, "=== LOADING HISTORY FROM STORAGE ===")
-            val json = sharedPrefs.getString(HISTORY_KEY, null)
-            if (json == null) {
-                Log.d(TAG, "No history data found in storage")
-                return
-            }
-
-            val type = object : TypeToken<List<HistoryMetadata>>() {}.type
-            val historyMetadata: List<HistoryMetadata> = gson.fromJson(json, type)
-
-            Log.d(TAG, "Loading ${historyMetadata.size} history entries from storage")
-
-            historyList.clear()
-            historyList.addAll(historyMetadata.mapNotNull { metadata ->
-                Log.d(TAG, "Loading entry: '${metadata.sentence}' with ${metadata.signMetadata.size} signs")
-
-                try {
-                    val signEntries = metadata.signMetadata.mapNotNull { signMeta ->
-                        Log.d(TAG, "  Loading sign: '${signMeta.sign}', Image ID: '${signMeta.bestFrameId}'")
-
-                        val bitmap = loadFrameImage(signMeta.bestFrameId)
-                        if (bitmap != null) {
-                            Log.d(TAG, "  ✅ Loaded bitmap: ${bitmap.width}x${bitmap.height}")
-
-                            val bestFrame = SignFrame(
-                                sign = signMeta.sign,
-                                confidence = signMeta.bestFrameConfidence,
-                                bitmap = bitmap,
-                                timestamp = signMeta.timestamp
-                            )
-                            SignHistoryEntry(
-                                sign = signMeta.sign,
-                                bestFrame = bestFrame,
-                                allFrames = listOf(bestFrame), // Only keep best frame for storage
-                                sentence = signMeta.sentence,
-                                timestamp = signMeta.timestamp
-                            )
-                        } else {
-                            Log.w(TAG, "  ❌ Could not load bitmap for sign: ${signMeta.sign}")
-                            null
-                        }
-                    }
-
-                    if (signEntries.isNotEmpty()) {
-                        Log.d(TAG, "✅ Successfully loaded entry with ${signEntries.size} signs")
-                        TranslationHistoryEntry(
-                            id = metadata.id,
-                            sentence = metadata.sentence,
-                            signEntries = signEntries,
-                            timestamp = metadata.timestamp
-                        )
-                    } else {
-                        Log.w(TAG, "❌ No valid sign entries for translation: ${metadata.sentence}")
-                        null
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error loading entry: ${metadata.id}", e)
-                    null
-                }
-            })
-
-            Log.d(TAG, "Successfully loaded ${historyList.size} history entries")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error loading history", e)
-        }
-    }
-
-    private fun saveFrameImage(frame: SignFrame, entryId: String): String {
-        val imageId = "${entryId}_${frame.sign}_${frame.timestamp}"
-        val fileName = "$imageId.jpg"
-
-        Log.d(TAG, "Saving frame image: $imageId")
-
-        try {
-            val imagesDir = File(context.filesDir, IMAGES_DIR)
-            if (!imagesDir.exists()) {
-                val created = imagesDir.mkdirs()
-                Log.d(TAG, "Created images directory: $created")
-            }
-
-            val imageFile = File(imagesDir, fileName)
-
-            // Check if bitmap is valid
-            if (frame.bitmap.isRecycled) {
-                Log.w(TAG, "Cannot save recycled bitmap for: $imageId")
-                return ""
-            }
-
-            Log.d(TAG, "Saving bitmap: ${frame.bitmap.width}x${frame.bitmap.height} to ${imageFile.absolutePath}")
-
-            val outputStream = FileOutputStream(imageFile)
-            val saved = frame.bitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
-            outputStream.close()
-
-            if (saved) {
-                Log.d(TAG, "✅ Successfully saved image: $imageId (${imageFile.length()} bytes)")
-                return imageId
+    /**
+     * Load bitmap from file
+     */
+    private fun loadBitmapFromFile(filename: String): Bitmap? {
+        return try {
+            val file = File(context.filesDir, filename)
+            if (file.exists()) {
+                BitmapFactory.decodeFile(file.absolutePath)
             } else {
-                Log.e(TAG, "❌ Failed to compress bitmap for: $imageId")
-                return ""
-            }
-        } catch (e: IOException) {
-            Log.e(TAG, "❌ Error saving image: $imageId", e)
-            return ""
-        }
-    }
-
-    private fun loadFrameImage(imageId: String): Bitmap? {
-        if (imageId.isEmpty()) {
-            Log.w(TAG, "Empty image ID provided")
-            return null
-        }
-
-        Log.d(TAG, "Loading frame image: $imageId")
-
-        try {
-            val imagesDir = File(context.filesDir, IMAGES_DIR)
-            val imageFile = File(imagesDir, "$imageId.jpg")
-
-            Log.d(TAG, "Looking for image file: ${imageFile.absolutePath}")
-            Log.d(TAG, "File exists: ${imageFile.exists()}, Size: ${if (imageFile.exists()) imageFile.length() else "N/A"}")
-
-            if (imageFile.exists()) {
-                val bitmap = BitmapFactory.decodeFile(imageFile.absolutePath)
-                if (bitmap != null) {
-                    Log.d(TAG, "✅ Successfully loaded image: $imageId (${bitmap.width}x${bitmap.height})")
-                    return bitmap
-                } else {
-                    Log.w(TAG, "❌ Failed to decode image file: $imageId")
-                }
-            } else {
-                Log.w(TAG, "❌ Image file does not exist: $imageId")
-            }
-            return null
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Error loading image: $imageId", e)
-            return null
-        }
-    }
-
-    private fun cleanupEntryImages(entry: TranslationHistoryEntry) {
-        try {
-            val imagesDir = File(context.filesDir, IMAGES_DIR)
-            entry.signEntries.forEach { signEntry ->
-                // Don't recycle bitmaps here - they might still be in use
-                // The bitmaps will be garbage collected naturally
-
-                // Delete saved image file
-                val imageId = "${entry.id}_${signEntry.sign}_${signEntry.timestamp}"
-                val imageFile = File(imagesDir, "$imageId.jpg")
-                if (imageFile.exists()) {
-                    val deleted = imageFile.delete()
-                    Log.d(TAG, "Cleaned up image file: $imageId (deleted: $deleted)")
-                }
+                null
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error cleaning up images", e)
+            null
         }
     }
 
-    private fun clearStoredHistory() {
-        sharedPrefs.edit().remove(HISTORY_KEY).apply()
-
-        // Clear all image files
-        try {
-            val imagesDir = File(context.filesDir, IMAGES_DIR)
-            if (imagesDir.exists()) {
-                val files = imagesDir.listFiles()
-                files?.forEach {
-                    val deleted = it.delete()
-                    Log.d(TAG, "Deleted image file: ${it.name} (success: $deleted)")
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error clearing image files", e)
-        }
+    /**
+     * Generate unique entry ID
+     */
+    private fun generateEntryId(): String {
+        return "entry_${System.currentTimeMillis()}_${(1000..9999).random()}"
     }
-
-    // Data classes for serialization
-    private data class HistoryMetadata(
-        val id: String,
-        val sentence: String,
-        val timestamp: Long,
-        val signMetadata: List<SignMetadata>
-    )
-
-    private data class SignMetadata(
-        val sign: String,
-        val timestamp: Long,
-        val sentence: String,
-        val bestFrameId: String,
-        val bestFrameConfidence: Float,
-        val frameCount: Int
-    )
 }

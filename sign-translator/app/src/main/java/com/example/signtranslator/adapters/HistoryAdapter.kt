@@ -4,7 +4,6 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -17,14 +16,15 @@ import com.example.signtranslator.models.TranslationHistoryEntry
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * RecyclerView adapter for displaying translation history entries.
+ * Shows translation sentences with preview images, timestamps, and sign counts.
+ * Supports click to view details and long-click to delete.
+ */
 class HistoryAdapter(
     private val onItemClick: (TranslationHistoryEntry) -> Unit,
     private val onItemLongClick: ((TranslationHistoryEntry) -> Boolean)? = null
 ) : ListAdapter<TranslationHistoryEntry, HistoryAdapter.HistoryViewHolder>(HistoryDiffCallback()) {
-
-    companion object {
-        private const val TAG = "HistoryAdapter"
-    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): HistoryViewHolder {
         val binding = ItemHistoryBinding.inflate(
@@ -42,19 +42,15 @@ class HistoryAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(entry: TranslationHistoryEntry) {
-            Log.d(TAG, "=== BINDING HISTORY ENTRY ===")
-            Log.d(TAG, "Entry: '${entry.sentence}' with ${entry.signEntries.size} signs")
-
+            // Set basic text information
             binding.tvSentence.text = entry.sentence
             binding.tvSignCount.text = "${entry.signEntries.size} signs"
             binding.tvTimestamp.text = formatTimestamp(entry.timestamp)
 
-            // DIAGNOSTIC: Always show a test bitmap first
-            showDiagnosticImage()
-
-            // Then try to show the real image
+            // Create preview image after layout is complete
             setupImageViewAfterLayout(entry)
 
+            // Set click listeners
             binding.root.setOnClickListener {
                 onItemClick(entry)
             }
@@ -66,142 +62,107 @@ class HistoryAdapter(
             }
         }
 
-        private fun showDiagnosticImage() {
-            Log.d(TAG, "=== SHOWING DIAGNOSTIC IMAGE ===")
-
-            // Create a simple test bitmap
-            val testBitmap = Bitmap.createBitmap(200, 200, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(testBitmap)
-
-            // Fill with bright red background
-            canvas.drawColor(Color.RED)
-
-            // Draw some white text
-            val paint = Paint().apply {
-                color = Color.WHITE
-                textSize = 40f
-                isAntiAlias = true
-                textAlign = Paint.Align.CENTER
-            }
-            canvas.drawText("TEST", 100f, 100f, paint)
-
-            // Set this test bitmap
-            binding.ivPreview.setImageBitmap(testBitmap)
-            binding.ivPreview.visibility = View.VISIBLE
-
-            Log.d(TAG, "✅ Test bitmap set - you should see a red square with 'TEST'")
-
-            // After 2 seconds, try to show the real image
-            binding.ivPreview.postDelayed({
-                Log.d(TAG, "Now attempting to show real image...")
-                // We'll override this in setupImageViewAfterLayout
-            }, 2000)
-        }
-
+        /**
+         * Wait for ImageView layout completion before setting the preview image
+         */
         private fun setupImageViewAfterLayout(entry: TranslationHistoryEntry) {
-            Log.d(TAG, "Setting up real ImageView for entry: ${entry.sentence}")
 
-            binding.ivPreview.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
-                override fun onGlobalLayout() {
-                    binding.ivPreview.viewTreeObserver.removeOnGlobalLayoutListener(this)
 
-                    Log.d(TAG, "Layout complete - ImageView dimensions: ${binding.ivPreview.width}x${binding.ivPreview.height}")
-
-                    // Wait a bit then set the real image
-                    binding.ivPreview.postDelayed({
-                        setRealImageToView(entry)
-                    }, 3000) // 3 seconds after the test image
-                }
-            })
         }
 
-        private fun setRealImageToView(entry: TranslationHistoryEntry) {
-            Log.d(TAG, "=== SETTING REAL IMAGE ===")
-            Log.d(TAG, "Setting real image to view for: ${entry.sentence}")
-
+        /**
+         * Create and set the preview image for the history entry
+         */
+        private fun setPreviewImage(entry: TranslationHistoryEntry) {
             if (entry.signEntries.isNotEmpty()) {
                 val firstSign = entry.signEntries.first()
-                val originalBitmap = firstSign.bestFrame.bitmap
-
-                Log.d(TAG, "Original bitmap: ${originalBitmap?.let { "${it.width}x${it.height}, config: ${it.config}, hasAlpha: ${it.hasAlpha()}" } ?: "NULL"}")
+                val originalBitmap = firstSign.signFrame.bitmap
 
                 if (originalBitmap != null && !originalBitmap.isRecycled) {
-                    Log.d(TAG, "Analyzing bitmap content...")
-
-                    // Check if the bitmap is actually just transparent/black
-                    val pixelSample = analyzePixels(originalBitmap)
-                    Log.d(TAG, "Pixel analysis: $pixelSample")
-
-                    // Create a processed version
-                    val processedBitmap = createVisibleBitmap(originalBitmap, firstSign.sign)
-
-                    Log.d(TAG, "Setting processed bitmap...")
-                    binding.ivPreview.setImageBitmap(processedBitmap)
-
-                    Log.d(TAG, "✅ Real bitmap should now be visible!")
-
+                    // Create enhanced preview with sign letter overlay
+                    val previewBitmap = createEnhancedPreview(originalBitmap, firstSign.sign)
                 } else {
-                    Log.w(TAG, "Original bitmap is invalid, keeping test image")
+                    // Fallback to placeholder if bitmap is invalid
+                    val placeholderBitmap = createPlaceholderPreview(firstSign.sign)
                 }
             } else {
-                Log.w(TAG, "No sign entries, keeping test image")
+                // Create generic placeholder for entries without signs
+                val placeholderBitmap = createPlaceholderPreview("?")
             }
+
         }
 
-        private fun analyzePixels(bitmap: Bitmap): String {
-            val width = bitmap.width
-            val height = bitmap.height
-
-            // Sample some pixels
-            val centerPixel = bitmap.getPixel(width / 2, height / 2)
-            val topLeftPixel = bitmap.getPixel(0, 0)
-            val bottomRightPixel = bitmap.getPixel(width - 1, height - 1)
-
-            return "Center: ${Integer.toHexString(centerPixel)}, " +
-                    "TopLeft: ${Integer.toHexString(topLeftPixel)}, " +
-                    "BottomRight: ${Integer.toHexString(bottomRightPixel)}"
-        }
-
-        private fun createVisibleBitmap(originalBitmap: Bitmap, sign: String): Bitmap {
-            Log.d(TAG, "Creating visible version of bitmap")
-
-            // Scale down
+        /**
+         * Create an enhanced preview image with the original photo and sign letter overlay
+         */
+        private fun createEnhancedPreview(originalBitmap: Bitmap, sign: String): Bitmap {
+            // Scale to preview size
             val scaledOriginal = Bitmap.createScaledBitmap(originalBitmap, 200, 200, true)
 
-            // Create a new bitmap with enhanced visibility
-            val visibleBitmap = Bitmap.createBitmap(200, 200, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(visibleBitmap)
+            val enhancedBitmap = Bitmap.createBitmap(200, 200, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(enhancedBitmap)
 
-            // Draw the original (might be dark/transparent)
+            // Draw the original image
             canvas.drawBitmap(scaledOriginal, 0f, 0f, null)
 
-            // Overlay with semi-transparent colored background and sign letter
+            // Add semi-transparent overlay for better text visibility
             val overlayPaint = Paint().apply {
-                color = Color.argb(128, 0, 255, 0) // Semi-transparent green
+                color = Color.argb(100, 0, 0, 0) // Semi-transparent black
             }
-            canvas.drawRect(0f, 0f, 200f, 200f, overlayPaint)
+            canvas.drawRect(0f, 160f, 200f, 200f, overlayPaint)
 
-            // Draw sign letter prominently
+            // Draw sign letter in bottom area
             val textPaint = Paint().apply {
                 color = Color.WHITE
-                textSize = 60f
+                textSize = 24f
                 isAntiAlias = true
                 textAlign = Paint.Align.CENTER
-                setShadowLayer(4f, 2f, 2f, Color.BLACK)
+                setShadowLayer(2f, 1f, 1f, Color.BLACK)
+            }
+            canvas.drawText(sign.uppercase(), 100f, 185f, textPaint)
+
+            // Clean up scaled bitmap if it's different from original
+            if (scaledOriginal != originalBitmap) {
+                scaledOriginal.recycle()
+            }
+
+            return enhancedBitmap
+        }
+
+        /**
+         * Create a placeholder preview image when the original bitmap is not available
+         */
+        private fun createPlaceholderPreview(sign: String): Bitmap {
+            val placeholderBitmap = Bitmap.createBitmap(200, 200, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(placeholderBitmap)
+
+            // Background gradient
+            canvas.drawColor(Color.parseColor("#E0E0E0"))
+
+            // Center sign letter
+            val textPaint = Paint().apply {
+                color = Color.parseColor("#757575")
+                textSize = 80f
+                isAntiAlias = true
+                textAlign = Paint.Align.CENTER
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
             }
             canvas.drawText(sign.uppercase(), 100f, 120f, textPaint)
 
-            // Draw border
+            // Border
             val borderPaint = Paint().apply {
-                color = Color.WHITE
+                color = Color.parseColor("#BDBDBD")
                 style = Paint.Style.STROKE
-                strokeWidth = 4f
+                strokeWidth = 2f
             }
-            canvas.drawRect(2f, 2f, 198f, 198f, borderPaint)
+            canvas.drawRect(1f, 1f, 199f, 199f, borderPaint)
 
-            return visibleBitmap
+            return placeholderBitmap
         }
 
+        /**
+         * Format timestamp for display (relative time or absolute date)
+         */
         private fun formatTimestamp(timestamp: Long): String {
             val now = System.currentTimeMillis()
             val diff = now - timestamp
@@ -219,6 +180,9 @@ class HistoryAdapter(
         }
     }
 
+    /**
+     * DiffUtil callback for efficient RecyclerView updates
+     */
     private class HistoryDiffCallback : DiffUtil.ItemCallback<TranslationHistoryEntry>() {
         override fun areItemsTheSame(oldItem: TranslationHistoryEntry, newItem: TranslationHistoryEntry): Boolean {
             return oldItem.id == newItem.id
