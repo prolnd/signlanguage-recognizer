@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -63,6 +65,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
+
     // CameraX
     implementation("androidx.camera:camera-core:1.3.1")
     implementation("androidx.camera:camera-camera2:1.3.1")
@@ -75,4 +78,32 @@ dependencies {
     // TensorFlow Lite
     implementation ("org.tensorflow:tensorflow-lite:2.13.0")
     implementation ("org.tensorflow:tensorflow-lite-support:0.4.4")
+
+
+    // ViewModel and LiveData
+    implementation ("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
+    implementation ("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
+
+    // Fragment
+    implementation ("androidx.fragment:fragment-ktx:1.6.2")
+
+    // Coroutines
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    //Gson
+    implementation ("com.google.code.gson:gson:2.10.1")
+
+    implementation("androidx.compose.material3:material3:1.2.1")
+
+    //Firebase
+    implementation(platform("com.google.firebase:firebase-bom:33.15.0"))
+    implementation ("com.google.firebase:firebase-auth-ktx")
+    // Firestore
+    implementation ("com.google.firebase:firebase-firestore-ktx")
+    implementation ("com.google.firebase:firebase-storage-ktx")
+    // Coroutines support
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.6.4")
+
+    implementation ("com.google.android.material:material:1.10.0")
+
 }

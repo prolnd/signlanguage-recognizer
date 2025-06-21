@@ -1,3 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">SignTranslator</string>
+    <string name="app_name">Sign Translator</string>
+
+    <!-- Navigation Titles -->
+    <string name="title_home">Camera</string>
+    <string name="title_history">History</string>
+    <string name="title_practice">Practice</string>
+    <string name="title_profile">Profile</string>
+    <string name="title_history_detail">History Detail</string>
+
+    <!-- Theme Strings -->
+    <string name="theme_light">Light Mode</string>
+    <string name="theme_dark">Dark Mode</string>
+    <string name="theme_system">System Default</string>
+    <string name="theme_status_light">☀️ Light mode enabled</string>
+    <string name="theme_status_dark">🌙 Dark mode enabled</string>
+    <string name="theme_status_system">📱 System default enabled</string>
+
+    <!-- Profile Strings -->
+    <string name="profile_header">👤 Profile &amp; Settings</string>
+    <string name="appearance_section">🎨 Appearance</string>
+    <string name="dark_mode_title">Dark Mode</string>
+    <string name="dark_mode_description">Switch between light and dark themes</string>
+    <string name="sign_in_benefits">Benefits of signing in:</string>
+    <string name="sign_in_benefits_list">• Unlimited practice session storage\n• Sync across all your devices\n• Never lose your practice history\n• Access from anywhere</string>
+    <string name="local_mode_title">📱 Local Mode</string>
+    <string name="local_mode_description">Without signing in, you can still use the app locally with up to 10 recent practice sessions stored on your device.</string>
+
+    <!-- Authentication Strings -->
+    <string name="email_hint">Email address</string>
+    <string name="password_hint">Password</string>
+    <string name="sign_in">Sign In</string>
+    <string name="create_account">Create Account</string>
+    <string name="forgot_password">Forgot Password?</string>
+    <string name="sign_out">Sign Out</string>
+    <string name="sync_now">🔄 Sync Now</string>
+
+    <!-- Error Messages -->
+    <string name="error_empty_fields">Please enter both email and password</string>
+    <string name="error_invalid_email">Please enter a valid email address</string>
+    <string name="error_password_length">Password must be at least 6 characters</string>
+    <string name="error_invalid_credentials">Invalid email or password</string>
+
+    <!-- Success Messages -->
+    <string name="success_sign_in">Successfully signed in!</string>
+    <string name="success_account_created">Account created successfully!</string>
+    <string name="success_signed_out">Signed out successfully</string>
+    <string name="success_sync_complete">Sync completed successfully!</string>
+    <string name="success_theme_light">Switched to light mode</string>
+    <string name="success_theme_dark">Switched to dark mode</string>
+
+    <!-- Button Labels -->
+    <string name="add_letter">Add Letter</string>
+    <string name="add_space">Space</string>
+    <string name="save_to_history">Save to History</string>
+    <string name="clear">Clear</string>
+    <string name="clear_all">Clear All</string>
+    <string name="back">← Back</string>
+
+    <!-- Content Descriptions -->
+    <string name="camera_preview">Camera preview</string>
+    <string name="sign_image">Sign language letter</string>
+    <string name="practice_preview">Practice preview</string>
+
+    <!-- Statistics -->
+    <string name="practice_sessions">Practice sessions: %d</string>
+    <string name="letters_practiced">Letters practiced: %d</string>
+    <string name="translations_count">Translations: %d</string>
+    <string name="signs_captured">Signs captured: %d</string>
+    <string name="last_sync">Last sync: %s</string>
+
+    <!-- Placeholders -->
+    <string name="detected_letter">Detected: %s</string>
+    <string name="confidence_level">Confidence: %s</string>
+    <string name="sentence_prefix">Sentence: %s</string>
+    <string name="signed_in_as">Signed in as: %s</string>
+    <string name="page_indicator">%d / %d</string>
+    <string name="letter_indicator">Letter %d of %d</string>
 </resources>

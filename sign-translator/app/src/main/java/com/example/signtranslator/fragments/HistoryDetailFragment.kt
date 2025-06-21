@@ -14,6 +14,10 @@ import com.example.signtranslator.viewmodels.DetectionViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * Fragment displaying detailed view of a translation history entry.
+ * Shows swipeable sign images with ViewPager2, sentence info, and navigation controls.
+ */
 class HistoryDetailFragment : Fragment() {
 
     private var _binding: FragmentHistoryDetailBinding? = null
@@ -41,49 +45,72 @@ class HistoryDetailFragment : Fragment() {
         loadHistoryEntry()
     }
 
+    /**
+     * Configure click listeners for navigation
+     */
     private fun setupClickListeners() {
         binding.btnBack.setOnClickListener {
             findNavController().navigateUp()
         }
     }
 
+    /**
+     * Load and display the history entry details
+     */
     private fun loadHistoryEntry() {
         historyId?.let { id ->
             val entry = detectionViewModel.getHistoryEntry(id)
             if (entry != null) {
+                // Display entry metadata
                 binding.tvSentence.text = entry.sentence
                 binding.tvTimestamp.text = formatTimestamp(entry.timestamp)
                 binding.tvSignCount.text = "${entry.signEntries.size} signs detected"
 
-                // Setup ViewPager for swipeable signs
-                signDetailAdapter = SignDetailPagerAdapter(entry.signEntries)
-                binding.viewPagerSigns.adapter = signDetailAdapter
-
-                // Setup page indicator
-                binding.tvPageIndicator.text = if (entry.signEntries.isNotEmpty()) {
-                    "1 / ${entry.signEntries.size}"
-                } else {
-                    "0 / 0"
-                }
-
-                // Update page indicator when swiping
-                binding.viewPagerSigns.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
-                    override fun onPageSelected(position: Int) {
-                        super.onPageSelected(position)
-                        binding.tvPageIndicator.text = "${position + 1} / ${entry.signEntries.size}"
-                    }
-                })
-
+                // Setup swipeable sign gallery
+                setupSignGallery(entry.signEntries)
             } else {
-                // Entry not found, go back
+                // Entry not found - navigate back
                 findNavController().navigateUp()
             }
         } ?: run {
-            // No ID provided, go back
+            // No ID provided - navigate back
             findNavController().navigateUp()
         }
     }
 
+    /**
+     * Configure ViewPager2 for swipeable sign images
+     */
+    private fun setupSignGallery(signEntries: List<com.example.signtranslator.models.SignHistoryEntry>) {
+        signDetailAdapter = SignDetailPagerAdapter(signEntries)
+        binding.viewPagerSigns.adapter = signDetailAdapter
+
+        // Initialize page indicator
+        updatePageIndicator(0, signEntries.size)
+
+        // Update page indicator when swiping
+        binding.viewPagerSigns.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                super.onPageSelected(position)
+                updatePageIndicator(position, signEntries.size)
+            }
+        })
+    }
+
+    /**
+     * Update the page indicator text
+     */
+    private fun updatePageIndicator(currentPage: Int, totalPages: Int) {
+        binding.tvPageIndicator.text = if (totalPages > 0) {
+            "${currentPage + 1} / $totalPages"
+        } else {
+            "0 / 0"
+        }
+    }
+
+    /**
+     * Format timestamp for detailed view display
+     */
     private fun formatTimestamp(timestamp: Long): String {
         val sdf = SimpleDateFormat("MMMM dd, yyyy 'at' HH:mm", Locale.getDefault())
         return sdf.format(Date(timestamp))

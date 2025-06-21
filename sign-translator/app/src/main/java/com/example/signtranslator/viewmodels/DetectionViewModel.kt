@@ -1,8 +1,6 @@
 package com.example.signtranslator.viewmodels
 
 import android.app.Application
-import android.graphics.Bitmap
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -15,15 +13,26 @@ import com.example.signtranslator.models.SignFrame
 import com.example.signtranslator.utils.AutoAddManager
 import com.example.signtranslator.utils.HistoryManager
 import com.example.signtranslator.utils.SignClassifier
+import com.example.signtranslator.utils.FirebaseTranslationManager
+import com.google.firebase.auth.FirebaseAuth
 import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarkerResult
 import kotlinx.coroutines.launch
+import java.lang.ref.WeakReference
 
+/**
+ * Main ViewModel for sign language detection and translation functionality.
+ * Coordinates between ML detection, sentence building, auto-add features, and history management.
+ * Serves as the central hub for the detection pipeline.
+ */
 class DetectionViewModel(application: Application) : AndroidViewModel(application) {
 
     private val signClassifier = SignClassifier(application)
     private val autoAddManager = AutoAddManager()
     private val historyManager = HistoryManager(application)
+    private val firebaseManager = FirebaseTranslationManager()
+    private val auth = FirebaseAuth.getInstance()
 
+    // LiveData for UI updates
     private val _detectionState = MutableLiveData(DetectionState())
     val detectionState: LiveData<DetectionState> = _detectionState
 
@@ -33,35 +42,42 @@ class DetectionViewModel(application: Application) : AndroidViewModel(applicatio
     private val _historyUpdated = MutableLiveData<Boolean>()
     val historyUpdated: LiveData<Boolean> = _historyUpdated
 
-    // Sign stability tracking
+    // Detection stability tracking
     private var lastDetection = ""
     private var detectionCount = 0
     private val stableDetectionThreshold = 3
 
-    // History tracking
+    // Current session data
     private val currentSessionSigns = mutableListOf<SignHistoryEntry>()
 
-    // Camera fragment reference for image capture
-    private var cameraFragment: CameraFragment? = null
+    // Camera fragment reference for image capture (weak reference to prevent memory leaks)
+    private var cameraFragmentRef: WeakReference<CameraFragment>? = null
 
-    companion object {
-        private const val TAG = "DetectionViewModel"
+    /**
+     * Set reference to camera fragment for photo capture
+     */
+    fun setCameraFragment(fragment: CameraFragment?) {
+        cameraFragmentRef = if (fragment != null) {
+            WeakReference(fragment)
+        } else {
+            null
+        }
     }
 
-    fun setCameraFragment(fragment: CameraFragment) {
-        cameraFragment = fragment
-        Log.d(TAG, "Camera fragment set for image capture")
-    }
-
+    /**
+     * Process hand landmarks from MediaPipe and convert to sign classification
+     */
     fun processHandLandmarks(result: HandLandmarkerResult) {
         if (result.landmarks().isEmpty()) return
 
         viewModelScope.launch {
             try {
+                // Extract x,y,z coordinates from landmarks
                 val landmarks = result.landmarks()[0].map { landmark ->
                     listOf(landmark.x(), landmark.y(), landmark.z())
                 }
 
+                // Classify the sign using ML model
                 val signResult = signClassifier.classifySign(landmarks)
                 signResult?.let {
                     processSignResult(it)
@@ -69,201 +85,298 @@ class DetectionViewModel(application: Application) : AndroidViewModel(applicatio
 
             } catch (e: Exception) {
                 _errorMessage.value = "Error processing landmarks: ${e.message}"
-                Log.e(TAG, "Error processing landmarks", e)
             }
         }
     }
 
+    /**
+     * Process sign classification result and handle UI updates and auto-add logic
+     */
     private fun processSignResult(result: SignResult) {
-        // Validate stability
-        if (result.sign == lastDetection) {
-            detectionCount++
-        } else {
-            lastDetection = result.sign
-            detectionCount = 1
-        }
+        try {
+            // Check for detection stability to reduce noise
+            if (result.sign == lastDetection) {
+                detectionCount++
+            } else {
+                lastDetection = result.sign
+                detectionCount = 1
+            }
 
-        if (detectionCount >= stableDetectionThreshold && result.confidence > 0.6f) {
-            val currentState = _detectionState.value ?: DetectionState()
-            _detectionState.value = currentState.copy(currentResult = result)
+            // Only update UI with stable, confident detections
+            if (detectionCount >= stableDetectionThreshold && result.confidence > 0.6f) {
+                val currentState = _detectionState.value ?: DetectionState()
+                _detectionState.value = currentState.copy(currentResult = result)
 
-            // Handle auto-add if enabled
-            if (currentState.isAutoAddEnabled) {
-                if (autoAddManager.processSign(result)) {
-                    Log.d(TAG, "Auto-adding letter: ${result.sign}")
-                    addLetterToSentence(result.sign, true)
+                // Handle auto-add if enabled
+                if (currentState.isAutoAddEnabled) {
+                    if (autoAddManager.processSign(result)) {
+                        addLetterToSentence(result.sign, true)
+                    }
                 }
             }
+        } catch (e: Exception) {
+            _errorMessage.value = "Error processing sign result: ${e.message}"
         }
     }
 
+    /**
+     * Manually add the currently detected letter to the sentence
+     */
     fun addLetterManually() {
-        val currentState = _detectionState.value ?: return
-        val result = currentState.currentResult ?: return
+        try {
+            val currentState = _detectionState.value ?: return
+            val result = currentState.currentResult ?: return
 
-        Log.d(TAG, "Manual add letter called for: ${result.sign} with confidence: ${result.confidence}")
-
-        if (result.confidence > 0.7f) {
-            addLetterToSentence(result.sign, false)
-        } else {
-            val errorMsg = "Low confidence (${(result.confidence * 100).toInt()}%) or no detection"
-            _errorMessage.value = errorMsg
-            Log.w(TAG, errorMsg)
-        }
-    }
-
-    fun addSpace() {
-        val currentState = _detectionState.value ?: return
-        val newSentence = currentState.sentence + " "
-        _detectionState.value = currentState.copy(sentence = newSentence)
-        Log.d(TAG, "Space added. New sentence: '$newSentence'")
-    }
-
-    fun saveToHistory() {
-        val currentState = _detectionState.value ?: return
-
-        Log.d(TAG, "=== SAVE TO HISTORY DEBUG ===")
-        Log.d(TAG, "Current sentence: '${currentState.sentence}' (length: ${currentState.sentence.length})")
-        Log.d(TAG, "Current session signs count: ${currentSessionSigns.size}")
-
-        if (currentSessionSigns.isNotEmpty()) {
-            Log.d(TAG, "Signs in session:")
-            currentSessionSigns.forEachIndexed { index, sign ->
-                Log.d(TAG, "  [$index] Sign: '${sign.sign}', Confidence: ${sign.bestFrame.confidence}")
+            if (result.confidence > 0.7f) {
+                addLetterToSentence(result.sign, false)
+            } else {
+                _errorMessage.value = "Low confidence (${(result.confidence * 100).toInt()}%) or no detection"
             }
+        } catch (e: Exception) {
+            _errorMessage.value = "Error adding letter: ${e.message}"
         }
-
-        if (currentState.sentence.isBlank()) {
-            val errorMsg = "No sentence to save"
-            _errorMessage.value = errorMsg
-            Log.w(TAG, errorMsg)
-            return
-        }
-
-        if (currentSessionSigns.isEmpty()) {
-            val errorMsg = "No signs captured to save"
-            _errorMessage.value = errorMsg
-            Log.w(TAG, errorMsg)
-            return
-        }
-
-        Log.d(TAG, "Saving translation to history: '${currentState.sentence}' with ${currentSessionSigns.size} signs")
-        historyManager.addTranslation(currentState.sentence, currentSessionSigns.toList())
-        _historyUpdated.value = true
-        Log.d(TAG, "Translation saved successfully")
     }
 
+    /**
+     * Add a space to the current sentence
+     */
+    fun addSpace() {
+        try {
+            val currentState = _detectionState.value ?: return
+            val newSentence = currentState.sentence + " "
+            _detectionState.value = currentState.copy(sentence = newSentence)
+        } catch (e: Exception) {
+            _errorMessage.value = "Error adding space: ${e.message}"
+        }
+    }
+
+    /**
+     * Save the current translation to history
+     */
+    fun saveToHistory() {
+        try {
+            val currentState = _detectionState.value ?: return
+
+            // Validate content before saving
+            if (currentState.sentence.isBlank()) {
+                _errorMessage.value = "No sentence to save"
+                return
+            }
+
+            if (currentSessionSigns.isEmpty()) {
+                _errorMessage.value = "No signs captured to save"
+                return
+            }
+
+            // Save to history manager
+            val signsToSave = currentSessionSigns.toList()
+            val success = historyManager.addTranslation(currentState.sentence, signsToSave)
+
+            if (success) {
+                _historyUpdated.value = true
+                clearCurrentSession()
+                _errorMessage.value = "Translation saved successfully!"
+            } else {
+                _errorMessage.value = "Failed to save translation"
+            }
+
+        } catch (e: Exception) {
+            _errorMessage.value = "Error saving to history: ${e.message}"
+        }
+    }
+
+    /**
+     * Clear the current sentence and session data
+     */
     fun clearSentence() {
-        Log.d(TAG, "Clear sentence called")
-        finishCurrentTranslation()
+        try {
+            finishCurrentTranslation()
 
-        val currentState = _detectionState.value ?: return
-        _detectionState.value = currentState.copy(
-            sentence = "",
-            currentResult = null
-        )
-        resetDetection()
-        autoAddManager.reset()
-        currentSessionSigns.clear()
-        Log.d(TAG, "Sentence cleared and session reset")
-    }
-
-    fun finishCurrentTranslation() {
-        val currentState = _detectionState.value ?: return
-        if (currentState.sentence.isNotBlank() && currentSessionSigns.isNotEmpty()) {
-            Log.d(TAG, "Finishing translation: '${currentState.sentence}' with ${currentSessionSigns.size} signs")
-            historyManager.addTranslation(currentState.sentence, currentSessionSigns.toList())
-            _historyUpdated.value = true
-        }
-    }
-
-    fun toggleAutoAdd() {
-        val currentState = _detectionState.value ?: return
-        val newAutoAddState = !currentState.isAutoAddEnabled
-        _detectionState.value = currentState.copy(isAutoAddEnabled = newAutoAddState)
-
-        Log.d(TAG, "Auto-add toggled to: $newAutoAddState")
-
-        if (!newAutoAddState) {
+            val currentState = _detectionState.value ?: return
+            _detectionState.value = currentState.copy(
+                sentence = "",
+                currentResult = null
+            )
+            resetDetection()
             autoAddManager.reset()
+            currentSessionSigns.clear()
+        } catch (e: Exception) {
+            _errorMessage.value = "Error clearing sentence: ${e.message}"
         }
     }
 
+    /**
+     * Toggle auto-add mode on/off
+     */
+    fun toggleAutoAdd() {
+        try {
+            val currentState = _detectionState.value ?: return
+            val newAutoAddState = !currentState.isAutoAddEnabled
+            _detectionState.value = currentState.copy(isAutoAddEnabled = newAutoAddState)
+
+            if (!newAutoAddState) {
+                autoAddManager.reset()
+            }
+        } catch (e: Exception) {
+            _errorMessage.value = "Error toggling auto-add: ${e.message}"
+        }
+    }
+
+    // Auto-add progress methods
     fun getAutoAddProgress(): Int = autoAddManager.getHoldProgress()
-
     fun getAutoAddCurrentSign(): String = autoAddManager.getCurrentSign()
-
     fun isWaitingForCooldown(sign: String): Boolean = autoAddManager.isWaitingForCooldown(sign)
 
-    fun isModelReady(): Boolean = signClassifier.isReady()
-
-    // History methods
+    // History management methods
     fun getHistory() = historyManager.getHistory()
-
     fun getHistoryEntry(id: String) = historyManager.getEntry(id)
 
+    /**
+     * Delete history entry both locally and from cloud
+     */
     fun deleteHistoryEntry(id: String): Boolean {
-        val deleted = historyManager.deleteEntry(id)
-        if (deleted) {
-            _historyUpdated.value = true
+        return try {
+            // Delete locally first
+            val deleted = historyManager.deleteEntry(id)
+
+            if (deleted) {
+                // Also delete from cloud if user is signed in
+                val currentUser = auth.currentUser
+                if (currentUser != null) {
+                    viewModelScope.launch {
+                        try {
+                            firebaseManager.deleteTranslationFromCloud(currentUser.uid, id)
+                        } catch (e: Exception) {
+                            // Cloud deletion failed, but local deletion succeeded
+                            // This is acceptable - sync can handle it later
+                        }
+                    }
+                }
+
+                _historyUpdated.value = true
+            }
+            deleted
+        } catch (e: Exception) {
+            false
         }
-        return deleted
     }
 
+    /**
+     * Clear all history both locally and from cloud
+     */
     fun clearHistory() {
-        historyManager.clearHistory()
-        _historyUpdated.value = true
-    }
+        try {
+            // Clear locally first
+            historyManager.clearHistory()
 
-    private fun addLetterToSentence(letter: String, wasAutoAdded: Boolean) {
-        val currentState = _detectionState.value ?: return
-        val cleanLetter = letter.replace(Regex("[\\r\\n\\t]"), "").lowercase().trim()
-        val newSentence = currentState.sentence + cleanLetter
-
-        Log.d(TAG, "=== ADD LETTER WITH IMAGE CAPTURE ===")
-        Log.d(TAG, "Adding letter '$cleanLetter' to sentence. Auto-added: $wasAutoAdded")
-        Log.d(TAG, "New sentence: '$newSentence'")
-        Log.d(TAG, "Camera fragment available: ${cameraFragment != null}")
-        Log.d(TAG, "Current result available: ${currentState.currentResult != null}")
-
-        // Capture actual camera frame when letter is added
-        if (cameraFragment != null && currentState.currentResult != null) {
-            Log.d(TAG, "Initiating camera capture...")
-
-            cameraFragment!!.captureCurrentFrame { bitmap ->
-                if (bitmap != null) {
-                    Log.d(TAG, "✅ Successfully captured camera frame: ${bitmap.width}x${bitmap.height}")
-
-                    // Create sign entry with captured bitmap
-                    val signFrame = SignFrame(
-                        sign = currentState.currentResult!!.sign,
-                        confidence = currentState.currentResult!!.confidence,
-                        bitmap = bitmap
-                    )
-
-                    val signEntry = SignHistoryEntry(
-                        sign = currentState.currentResult!!.sign,
-                        bestFrame = signFrame,
-                        allFrames = listOf(signFrame),
-                        sentence = newSentence
-                    )
-
-                    currentSessionSigns.add(signEntry)
-                    Log.d(TAG, "✅ Added sign entry to session. Total signs: ${currentSessionSigns.size}")
-
-                } else {
-                    Log.e(TAG, "❌ Camera capture failed")
+            // Also clear from cloud if user is signed in
+            val currentUser = auth.currentUser
+            if (currentUser != null) {
+                viewModelScope.launch {
+                    try {
+                        firebaseManager.clearAllUserTranslations(currentUser.uid)
+                    } catch (e: Exception) {
+                        // Cloud clearing failed, but local clearing succeeded
+                        // This is acceptable
+                    }
                 }
             }
-        } else {
-            Log.w(TAG, "❌ Missing requirements for capture:")
-            Log.w(TAG, "   Camera fragment: ${cameraFragment != null}")
-            Log.w(TAG, "   Current result: ${currentState.currentResult != null}")
-        }
 
-        _detectionState.value = currentState.copy(sentence = newSentence)
+            _historyUpdated.value = true
+        } catch (e: Exception) {
+            _errorMessage.value = "Error clearing history: ${e.message}"
+        }
     }
 
+    /**
+     * Add a letter to the sentence and capture camera frame
+     */
+    private fun addLetterToSentence(letter: String, wasAutoAdded: Boolean) {
+        try {
+            val currentState = _detectionState.value ?: return
+
+            // Clean the letter input
+            val cleanLetter = letter.replace(Regex("[\\r\\n\\t]"), "").trim().uppercase()
+            if (cleanLetter.isEmpty()) return
+
+            val newSentence = currentState.sentence + cleanLetter
+
+            // Capture camera frame for this letter
+            val cameraFragment = cameraFragmentRef?.get()
+            if (cameraFragment != null && currentState.currentResult != null) {
+                cameraFragment.captureCurrentFrame { bitmap ->
+                    try {
+                        if (bitmap != null) {
+                            // Create sign entry with captured bitmap
+                            val signFrame = SignFrame(
+                                sign = cleanLetter,
+                                confidence = currentState.currentResult.confidence,
+                                bitmap = bitmap
+                            )
+
+                            val signEntry = SignHistoryEntry(
+                                sign = cleanLetter,
+                                signFrame = signFrame,
+                                sentence = newSentence
+                            )
+
+                            currentSessionSigns.add(signEntry)
+                        }
+                    } catch (e: Exception) {
+                        // Handle error silently - continue without image
+                    }
+                }
+            }
+
+            _detectionState.value = currentState.copy(sentence = newSentence)
+        } catch (e: Exception) {
+            _errorMessage.value = "Error adding letter: ${e.message}"
+        }
+    }
+
+    /**
+     * Finish current translation if it has content
+     */
+    fun finishCurrentTranslation() {
+        try {
+            val currentState = _detectionState.value ?: return
+            if (currentState.sentence.isNotBlank() && currentSessionSigns.isNotEmpty()) {
+                historyManager.addTranslation(currentState.sentence, currentSessionSigns.toList())
+                _historyUpdated.value = true
+            }
+        } catch (e: Exception) {
+            // Handle error silently
+        }
+    }
+
+    /**
+     * Clear current session and clean up resources
+     */
+    private fun clearCurrentSession() {
+        try {
+            val currentState = _detectionState.value ?: return
+            _detectionState.value = currentState.copy(
+                sentence = "",
+                currentResult = null
+            )
+
+            resetDetection()
+            autoAddManager.reset()
+
+            // Clean up bitmap resources
+            currentSessionSigns.forEach { signEntry ->
+                signEntry.signFrame.bitmap?.recycle()
+            }
+            currentSessionSigns.clear()
+
+        } catch (e: Exception) {
+            // Handle error silently
+        }
+    }
+
+    /**
+     * Reset detection tracking variables
+     */
     private fun resetDetection() {
         lastDetection = ""
         detectionCount = 0
@@ -271,7 +384,11 @@ class DetectionViewModel(application: Application) : AndroidViewModel(applicatio
 
     override fun onCleared() {
         super.onCleared()
-        signClassifier.cleanup()
-        cameraFragment = null
+        try {
+            signClassifier.cleanup()
+            cameraFragmentRef = null
+        } catch (e: Exception) {
+            // Handle cleanup errors silently
+        }
     }
 }

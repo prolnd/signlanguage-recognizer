@@ -3,14 +3,15 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="12dp">
+    android:padding="12dp"
+    android:background="@color/background_secondary">
 
-    <!-- Detection Display - Compact -->
+    <!-- Detection Display - Rounded -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:background="#F5F5F5"
+        android:background="@drawable/rounded_background"
         android:padding="8dp"
         android:layout_marginBottom="8dp">
 
@@ -26,14 +27,16 @@
                 android:layout_height="wrap_content"
                 android:text="Detected: -"
                 android:textSize="14sp"
-                android:textStyle="bold" />
+                android:textStyle="bold"
+                android:textColor="@color/text_secondary" />
 
             <TextView
                 android:id="@+id/tvConfidence"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Confidence: -"
-                android:textSize="12sp" />
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary" />
 
         </LinearLayout>
 
@@ -48,7 +51,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Auto"
-                android:textSize="12sp" />
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary" />
 
             <Switch
                 android:id="@+id/switchAutoAdd"
@@ -61,22 +65,23 @@
 
     </LinearLayout>
 
-    <!-- Sentence Display - Compact -->
+    <!-- Sentence Display - Rounded -->
     <TextView
         android:id="@+id/tvSentence"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Sentence: "
         android:textSize="14sp"
+        android:textColor="@color/text_primary"
         android:padding="8dp"
-        android:background="@android:color/white"
+        android:background="@drawable/rounded_background"
         android:layout_marginBottom="8dp"
         android:minHeight="36dp"
         android:gravity="center_vertical"
         android:maxLines="2"
         android:ellipsize="end" />
 
-    <!-- Control Buttons - Compact Grid -->
+    <!-- Control Buttons - Rounded Corners -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -97,8 +102,8 @@
                 android:text="Add Letter"
                 android:textSize="12sp"
                 android:layout_marginEnd="4dp"
-                android:background="#2196F3"
-                android:textColor="@android:color/white" />
+                android:background="@drawable/button_primary"
+                android:textColor="@color/text_on_primary" />
 
             <Button
                 android:id="@+id/btnAddSpace"
@@ -108,32 +113,39 @@
                 android:text="Space"
                 android:textSize="12sp"
                 android:layout_marginStart="4dp"
-                android:background="#E3F2FD"
-                android:textColor="#2196F3" />
+                android:background="@drawable/button_secondary"
+                android:textColor="@color/text_on_primary" />
 
         </LinearLayout>
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
         <!-- Second Row: Save to History -->
         <Button
             android:id="@+id/btnSaveToHistory"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="40dp"
+            android:layout_weight="1"
             android:text="Save to History"
             android:textSize="12sp"
-            android:layout_marginBottom="6dp"
-            android:background="#4CAF50"
-            android:textColor="@android:color/white" />
+            android:layout_marginEnd="4dp"
+            android:background="@drawable/button_success"
+            android:textColor="@color/text_on_secondary" />
 
         <!-- Third Row: Clear -->
         <Button
             android:id="@+id/btnClear"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="40dp"
+            android:layout_weight="1"
             android:text="Clear"
             android:textSize="12sp"
-            android:background="#F44336"
-            android:textColor="@android:color/white" />
-
+            android:layout_marginStart="4dp"
+            android:background="@drawable/button_error"
+            android:textColor="@color/text_on_primary" />
+        </LinearLayout>
     </LinearLayout>
 
 </LinearLayout>

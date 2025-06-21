@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="12dp"
+    android:background="@color/background_secondary">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Header - More Compact -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="👤 Profile &amp; Settings"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/rounded_background"
+            android:padding="12dp" />
+
+        <!-- Theme Settings Section -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/rounded_background"
+            android:padding="12dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="🎨 Appearance"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Theme Toggle - More Compact -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Dark Mode"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_primary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Switch themes"
+                        android:textSize="11sp"
+                        android:textColor="@color/text_secondary" />
+
+                </LinearLayout>
+
+                <Switch
+                    android:id="@+id/theme_switch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:enabled="false"
+                    android:checked="false"/>
+
+            </LinearLayout>
+
+            <!-- Theme Status -->
+            <TextView
+                android:id="@+id/theme_status_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="🌙 Dark mode coming soon"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary"
+                android:background="@color/surface_variant"
+                android:padding="6dp" />
+
+        </LinearLayout>
+
+        <!-- Loading Progress -->
+        <ProgressBar
+            android:id="@+id/loading_progress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone" />
+
+        <!-- Error Message -->
+        <TextView
+            android:id="@+id/error_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Error message"
+            android:textColor="@color/error"
+            android:textSize="12sp"
+            android:background="@drawable/rounded_background"
+            android:padding="10dp"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone" />
+
+        <!-- Signed Out Container - More Compact -->
+        <LinearLayout
+            android:id="@+id/signed_out_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/rounded_background"
+            android:padding="12dp"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="🔒 Sign in to sync your practice sessions"
+                android:textSize="14sp"
+                android:textColor="@color/text_primary"
+                android:layout_marginBottom="12dp"
+                android:textAlignment="center" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="✓ Unlimited storage ✓ Sync devices ✓ Never lose data"
+                android:textSize="11sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginBottom="12dp"
+                android:textAlignment="center" />
+
+            <!-- Input Fields - More Compact -->
+            <EditText
+                android:id="@+id/email_edit_text"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:hint="Email address"
+                android:inputType="textEmailAddress"
+                android:background="@drawable/edit_text_background"
+                android:padding="8dp"
+                android:layout_marginBottom="8dp"
+                android:textSize="14sp"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary" />
+
+            <EditText
+                android:id="@+id/password_edit_text"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:hint="Password"
+                android:inputType="textPassword"
+                android:background="@drawable/edit_text_background"
+                android:padding="8dp"
+                android:layout_marginBottom="12dp"
+                android:textSize="14sp"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary" />
+
+            <!-- Action Buttons - Better Layout -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <Button
+                    android:id="@+id/sign_in_button"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:text="Sign In"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_on_primary"
+                    android:background="@drawable/button_primary"
+                    android:layout_marginEnd="6dp" />
+
+                <Button
+                    android:id="@+id/create_account_button"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:text="Create Account"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_on_primary"
+                    android:background="@drawable/button_secondary"
+                    android:layout_marginStart="6dp" />
+
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/forgot_password_button"
+                android:layout_width="match_parent"
+                android:layout_height="32dp"
+                android:text="Forgot Password?"
+                android:textSize="11sp"
+                android:textColor="@color/text_secondary"
+                android:background="@android:color/transparent" />
+
+        </LinearLayout>
+
+        <!-- Signed In Container - More Compact -->
+        <LinearLayout
+            android:id="@+id/signed_in_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone">
+
+            <!-- User Info -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/rounded_background"
+                android:padding="12dp"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:id="@+id/user_email_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Signed in as: user@example.com"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"
+                    android:layout_marginBottom="4dp" />
+
+                <TextView
+                    android:id="@+id/sync_status_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="☁️ Cloud sync enabled"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_secondary" />
+
+            </LinearLayout>
+
+            <!-- Sync Stats - Compact -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/rounded_background"
+                android:padding="12dp"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="📊 Sync Statistics"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Stats in rows instead of grid -->
+                <TextView
+                    android:id="@+id/translations_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="📸 Translations: 25"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_secondary"
+                    android:layout_marginBottom="2dp" />
+
+                <TextView
+                    android:id="@+id/translation_signs_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="✋ Signs captured: 125"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_secondary"
+                    android:layout_marginBottom="6dp" />
+
+                <TextView
+                    android:id="@+id/last_sync_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Last sync: Dec 15, 14:30"
+                    android:textSize="11sp"
+                    android:textColor="@color/text_tertiary" />
+
+            </LinearLayout>
+
+            <!-- Actions - Compact -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="@drawable/rounded_background"
+                android:padding="12dp">
+
+                <Button
+                    android:id="@+id/sync_now_button"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:text="🔄 Sync Now"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_on_primary"
+                    android:background="@drawable/button_primary"
+                    android:layout_marginEnd="6dp" />
+
+                <Button
+                    android:id="@+id/sign_out_button"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:text="Sign Out"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_on_primary"
+                    android:background="@drawable/button_secondary"
+                    android:layout_marginStart="6dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Local Mode Info -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/rounded_background"
+            android:padding="12dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📱 Local Mode"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:layout_marginBottom="6dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Without signing in, you can still use the app locally with up to 10 recent practice sessions stored on your device."
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary"
+                android:lineSpacingExtra="1dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</ScrollView>

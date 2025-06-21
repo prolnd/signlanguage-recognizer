@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="16dp"
+    android:layout_margin="8dp"
+    android:background="@drawable/rounded_background"
+    android:foreground="?android:attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Content Section - Full Width (No Image) -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <!-- Sentence Text -->
+        <TextView
+            android:id="@+id/tvSentence"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Hello World"
+            android:textSize="16sp"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Metadata Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- Sign Count -->
+            <TextView
+                android:id="@+id/tvSignCount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="5 signs"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary"
+                android:background="@color/info_light"
+                android:padding="4dp"
+                android:layout_marginEnd="8dp" />
+
+            <!-- Spacer -->
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <!-- Timestamp -->
+            <TextView
+                android:id="@+id/tvTimestamp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="2h ago"
+                android:textSize="12sp"
+                android:textColor="@color/text_tertiary" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Action Indicator -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:text="→"
+        android:textSize="18sp"
+        android:textColor="@color/text_secondary"
+        android:layout_marginStart="8dp" />
+
+</LinearLayout>

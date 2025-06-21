@@ -14,6 +14,11 @@ import com.example.signtranslator.adapters.HistoryAdapter
 import com.example.signtranslator.databinding.FragmentHistoryBinding
 import com.example.signtranslator.viewmodels.DetectionViewModel
 
+/**
+ * Fragment displaying the translation history list.
+ * Shows all saved translations with preview images and metadata.
+ * Supports navigation to detail view and deletion functionality.
+ */
 class HistoryFragment : Fragment() {
 
     private var _binding: FragmentHistoryBinding? = null
@@ -36,17 +41,20 @@ class HistoryFragment : Fragment() {
         loadHistory()
     }
 
+    /**
+     * Configure RecyclerView with adapter and click handlers
+     */
     private fun setupRecyclerView() {
         historyAdapter = HistoryAdapter(
             onItemClick = { historyEntry ->
-                // Navigate to detail view
+                // Navigate to detailed view
                 val bundle = Bundle().apply {
                     putString("historyId", historyEntry.id)
                 }
                 findNavController().navigate(R.id.action_history_to_detail, bundle)
             },
             onItemLongClick = { historyEntry ->
-                // Show delete confirmation dialog
+                // Show delete confirmation
                 showDeleteConfirmationDialog(historyEntry.id, historyEntry.sentence)
                 true
             }
@@ -58,12 +66,18 @@ class HistoryFragment : Fragment() {
         }
     }
 
+    /**
+     * Configure UI click listeners
+     */
     private fun setupClickListeners() {
         binding.btnClearHistory?.setOnClickListener {
             showClearAllConfirmationDialog()
         }
     }
 
+    /**
+     * Observe ViewModel for history updates
+     */
     private fun observeViewModel() {
         detectionViewModel.historyUpdated.observe(viewLifecycleOwner) { updated ->
             if (updated) {
@@ -72,10 +86,14 @@ class HistoryFragment : Fragment() {
         }
     }
 
+    /**
+     * Load history from ViewModel and update UI
+     */
     private fun loadHistory() {
         val history = detectionViewModel.getHistory()
         historyAdapter.submitList(history)
 
+        // Show empty state if no history exists
         if (history.isEmpty()) {
             binding.emptyState.visibility = View.VISIBLE
             binding.recyclerView.visibility = View.GONE
@@ -85,6 +103,9 @@ class HistoryFragment : Fragment() {
         }
     }
 
+    /**
+     * Show confirmation dialog for deleting a single history entry
+     */
     private fun showDeleteConfirmationDialog(historyId: String, sentence: String) {
         AlertDialog.Builder(requireContext())
             .setTitle("Delete Translation")
@@ -96,6 +117,9 @@ class HistoryFragment : Fragment() {
             .show()
     }
 
+    /**
+     * Show confirmation dialog for clearing all history
+     */
     private fun showClearAllConfirmationDialog() {
         AlertDialog.Builder(requireContext())
             .setTitle("Clear All History")
@@ -109,7 +133,8 @@ class HistoryFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        loadHistory() // Refresh when returning to this fragment
+        // Refresh history when returning to this fragment
+        loadHistory()
     }
 
     override fun onDestroyView() {

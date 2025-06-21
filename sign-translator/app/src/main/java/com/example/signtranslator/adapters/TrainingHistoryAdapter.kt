@@ -12,10 +12,11 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.example.signtranslator.databinding.ItemTrainingHistoryCompactBinding
+import com.example.signtranslator.databinding.ItemTrainingBinding
 import com.example.signtranslator.models.TrainingSession
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.core.graphics.toColorInt
 
 class TrainingHistoryAdapter(
     private val onItemClick: (TrainingSession) -> Unit,
@@ -27,7 +28,7 @@ class TrainingHistoryAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CompactTrainingViewHolder {
-        val binding = ItemTrainingHistoryCompactBinding.inflate(
+        val binding = ItemTrainingBinding.inflate(
             LayoutInflater.from(parent.context), parent, false
         )
         return CompactTrainingViewHolder(binding)
@@ -38,7 +39,7 @@ class TrainingHistoryAdapter(
     }
 
     inner class CompactTrainingViewHolder(
-        private val binding: ItemTrainingHistoryCompactBinding
+        private val binding: ItemTrainingBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(session: TrainingSession) {
@@ -102,7 +103,7 @@ class TrainingHistoryAdapter(
             // If more than 4 letters, show "..."
             if (session.letters.size > 4) {
                 val textPaint = Paint().apply {
-                    color = Color.parseColor("#666666")
+                    color = "#666666".toColorInt()
                     textSize = 12f
                     isAntiAlias = true
                     textAlign = Paint.Align.CENTER
@@ -110,10 +111,6 @@ class TrainingHistoryAdapter(
                 canvas.drawText("...", 110f, 25f, textPaint)
             }
 
-            binding.ivPreview.setImageBitmap(previewBitmap)
-            binding.ivPreview.visibility = View.VISIBLE
-
-            Log.d(TAG, "✅ Compact letter preview created for ${lettersToShow.size} letters")
         }
 
         private fun formatTimestamp(timestamp: Long): String {

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="16dp"
+    android:background="@color/background_secondary">
+
+    <!-- Sign Image Container -->
+    <FrameLayout
+        android:layout_width="240dp"
+        android:layout_height="240dp"
+        android:layout_marginBottom="20dp">
+
+        <!-- Main Sign Image -->
+        <ImageView
+            android:id="@+id/sign_image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:background="@drawable/image_background"
+            android:contentDescription="Sign language letter" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/letter_text"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:text="A"
+        android:textSize="48sp"
+        android:textColor="@android:color/white"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:background="@drawable/sign_letter_background"
+        android:layout_marginBottom="20dp" />
+
+
+</LinearLayout>

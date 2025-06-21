@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@color/background_secondary">
+
+    <!-- History Container (default view) -->
+    <LinearLayout
+        android:id="@+id/history_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:visibility="visible">
+
+        <!-- Header - MATCHING Translation History Style -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Practice History"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary" />
+
+        </LinearLayout>
+
+        <!-- History RecyclerView -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/history_recycler_view"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:scrollbars="vertical" />
+
+        <TextView
+            android:id="@+id/sync_status_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📱 5/10 local sessions"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:textAlignment="center"
+            android:padding="8dp"
+            android:background="@color/background_primary"
+            android:layout_marginBottom="8dp" />
+
+    </LinearLayout>
+
+    <!-- Slideshow Container (practice mode) -->
+    <LinearLayout
+        android:id="@+id/slideshow_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <!-- Practice Controls -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+            <Button
+                android:id="@+id/back_button"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="← Back"
+                android:textSize="14sp"
+                android:textColor="@color/text_secondary"
+                android:background="@drawable/button_primary"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:layout_marginEnd="8dp" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <Button
+                android:id="@+id/save_button"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="💾 Save"
+                android:textSize="14sp"
+                android:textColor="@android:color/white"
+                android:background="@drawable/button_primary"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp" />
+
+        </LinearLayout>
+
+        <!-- Page Indicator -->
+        <TextView
+            android:id="@+id/page_indicator"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Letter 1 of 5"
+            android:textAlignment="center"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/rounded_background"
+            android:padding="12dp" />
+
+        <!-- ViewPager for signs -->
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/practice_view_pager"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="@drawable/rounded_background" />
+
+    </LinearLayout>
+
+    <!-- Empty state when no history -->
+    <LinearLayout
+        android:id="@+id/empty_state"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="👋"
+            android:textSize="72sp"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="No practice sessions yet"
+            android:textSize="18sp"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Enter a word below to start practicing!"
+            android:textSize="14sp"
+            android:textColor="@color/text_secondary"
+            android:textAlignment="center" />
+
+    </LinearLayout>
+
+    <!-- Input Section (always at bottom) -->
+    <LinearLayout
+        android:id="@+id/input_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/rounded_background"
+        android:padding="16dp"
+        android:layout_marginTop="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="✋ Enter word or sentence to practice:"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/input_edit_text"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:hint="Try 'HELLO' or tap history above..."
+                android:inputType="textCapSentences"
+                android:maxLines="1"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
+                android:textSize="16sp"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary"
+                android:layout_marginEnd="8dp" />
+
+            <Button
+                android:id="@+id/generate_button"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:text="📚 Start"
+                android:textColor="@android:color/white"
+                android:background="@drawable/button_primary"
+                android:textStyle="bold"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

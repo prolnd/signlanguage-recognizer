@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/homeFragment"
+        android:icon="@android:drawable/ic_menu_camera"
+        android:title="Camera" />
+
+    <item
+        android:id="@+id/historyFragment"
+        android:icon="@android:drawable/ic_menu_recent_history"
+        android:title="History" />
+
+    <item
+        android:id="@+id/practiceFragment"
+        android:icon="@android:drawable/ic_menu_edit"
+        android:title="Practice" />
+
+    <item
+        android:id="@+id/profileFragment"
+        android:icon="@android:drawable/ic_menu_manage"
+        android:title="Profile" />
+</menu>

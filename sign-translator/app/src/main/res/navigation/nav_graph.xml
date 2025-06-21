@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/homeFragment">
+
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.example.signtranslator.fragments.HomeFragment"
+        android:label="Sign Translator"
+        tools:layout="@layout/fragment_home" />
+
+    <fragment
+        android:id="@+id/historyFragment"
+        android:name="com.example.signtranslator.fragments.HistoryFragment"
+        android:label="Translation History"
+        tools:layout="@layout/fragment_history">
+
+        <action
+            android:id="@+id/action_history_to_detail"
+            app:destination="@id/historyDetailFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/historyDetailFragment"
+        android:name="com.example.signtranslator.fragments.HistoryDetailFragment"
+        android:label="Translation Details"
+        tools:layout="@layout/fragment_history_detail">
+
+        <argument
+            android:name="historyId"
+            app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/practiceFragment"
+        android:name="com.example.signtranslator.fragments.PracticeFragment"
+        android:label="Practice"
+        tools:layout="@layout/fragment_practice" />
+
+    <fragment
+        android:id="@+id/profileFragment"
+        android:name="com.example.signtranslator.fragments.ProfileFragment"
+        android:label="Profile"
+        tools:layout="@layout/fragment_profile" />
+
+</navigation>

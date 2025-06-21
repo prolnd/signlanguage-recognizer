@@ -17,7 +17,7 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
 import com.example.signtranslator.databinding.FragmentCameraBinding
 import com.example.signtranslator.utils.HandLandmarkerHelper
 import com.example.signtranslator.viewmodels.DetectionViewModel
@@ -26,18 +26,27 @@ import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
+/**
+ * Fragment responsible for camera functionality in the sign language translator.
+ * Manages three camera use cases:
+ * - Preview: Live camera feed for user to see
+ * - ImageAnalysis: Processes frames for hand detection (640x480)
+ * - ImageCapture: Takes actual photos when letters are detected (square format)
+ */
 class CameraFragment : Fragment() {
 
     private var _binding: FragmentCameraBinding? = null
     private val binding get() = _binding!!
 
-    private val detectionViewModel: DetectionViewModel by activityViewModels()
+    private val detectionViewModel: DetectionViewModel by viewModels({ requireParentFragment() })
 
     private lateinit var cameraExecutor: ExecutorService
     private var handLandmarkerHelper: HandLandmarkerHelper? = null
 
-    // ImageCapture for actual camera capture
+    // Camera use cases
     private var imageCapture: ImageCapture? = null
+    private var camera: Camera? = null
+    private var imageAnalysis: ImageAnalysis? = null
 
     companion object {
         private const val TAG = "CameraFragment"
@@ -54,54 +63,61 @@ class CameraFragment : Fragment() {
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        Log.d(TAG, "onCreateView called")
         _binding = FragmentCameraBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        Log.d(TAG, "onViewCreated called")
 
         try {
             cameraExecutor = Executors.newSingleThreadExecutor()
             setupHandLandmarker()
             checkPermissionAndStartCamera()
 
-            // Set this fragment as the capture provider for the DetectionViewModel
+            // Register this fragment as the capture provider
             detectionViewModel.setCameraFragment(this)
-            Log.d(TAG, "Camera fragment setup completed")
         } catch (e: Exception) {
             Log.e(TAG, "Error in onViewCreated", e)
             showMessage("Error setting up camera: ${e.message}")
         }
     }
 
+    /**
+     * Initialize MediaPipe hand landmark detection
+     */
     private fun setupHandLandmarker() {
         try {
-            Log.d(TAG, "Setting up HandLandmarker")
             handLandmarkerHelper = HandLandmarkerHelper(
                 context = requireContext(),
                 runningMode = RunningMode.LIVE_STREAM,
                 handLandmarkerHelperListener = object : HandLandmarkerHelper.LandmarkerListener {
                     override fun onError(error: String, errorCode: Int) {
-                        Log.e(TAG, "ML Error: $error")
-                        showMessage("ML Error: $error")
+                        requireActivity().runOnUiThread {
+                            showMessage("ML Error: $error")
+                        }
                     }
 
                     override fun onResults(resultBundle: HandLandmarkerHelper.ResultBundle) {
                         try {
-                            // Check if fragment is still attached before updating UI
+                            // Ensure fragment is still attached before updating UI
                             if (isAdded && _binding != null && resultBundle.results.isNotEmpty()) {
-                                binding.overlayView.setResults(
-                                    resultBundle.results[0],
-                                    resultBundle.inputImageWidth,
-                                    resultBundle.inputImageHeight
-                                )
-                                binding.overlayView.invalidate()
+                                requireActivity().runOnUiThread {
+                                    try {
+                                        // Update overlay with hand landmarks
+                                        binding.overlayView.setResults(
+                                            resultBundle.results[0],
+                                            resultBundle.inputImageWidth,
+                                            resultBundle.inputImageHeight
+                                        )
+                                        binding.overlayView.invalidate()
 
-                                // Pass results to DetectionViewModel
-                                detectionViewModel.processHandLandmarks(resultBundle.results[0])
+                                        // Send results to detection pipeline
+                                        detectionViewModel.processHandLandmarks(resultBundle.results[0])
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "Error updating UI with results", e)
+                                    }
+                                }
                             }
                         } catch (e: Exception) {
                             Log.e(TAG, "Error processing ML results", e)
@@ -109,13 +125,15 @@ class CameraFragment : Fragment() {
                     }
                 }
             )
-            Log.d(TAG, "HandLandmarker setup completed")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize HandLandmarker", e)
             showMessage("Failed to initialize ML: ${e.message}")
         }
     }
 
+    /**
+     * Check camera permission and start camera if granted
+     */
     private fun checkPermissionAndStartCamera() {
         if (allPermissionsGranted()) {
             startCamera()
@@ -124,69 +142,68 @@ class CameraFragment : Fragment() {
         }
     }
 
+    /**
+     * Initialize and configure camera with all three use cases
+     */
     private fun startCamera() {
-        Log.d(TAG, "Starting camera")
-
         val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
 
         cameraProviderFuture.addListener({
-            // Check if fragment is still attached before proceeding
+            // Ensure fragment is still attached
             if (!isAdded || _binding == null) {
-                Log.w(TAG, "Fragment not attached, cancelling camera setup")
                 return@addListener
             }
 
             try {
                 val cameraProvider = cameraProviderFuture.get()
 
+                // Configure Preview for user interface
                 val preview = Preview.Builder().build().also {
                     it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
                 }
 
-                @Suppress("DEPRECATION")
-                val imageAnalyzer = ImageAnalysis.Builder()
+                // Configure ImageAnalysis for hand detection
+                imageAnalysis = ImageAnalysis.Builder()
                     .setTargetResolution(Size(640, 480))
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                     .build()
-                    .also {
-                        it.setAnalyzer(cameraExecutor) { imageProxy ->
+                    .also { analyzer ->
+                        analyzer.setAnalyzer(cameraExecutor) { imageProxy ->
                             try {
-                                // Check if fragment is still attached before processing
-                                if (isAdded && handLandmarkerHelper != null) {
+                                if (isAdded && handLandmarkerHelper != null && !handLandmarkerHelper!!.isClose()) {
                                     handLandmarkerHelper?.detectLiveStream(imageProxy, true)
+                                } else {
+                                    imageProxy.close()
                                 }
                             } catch (e: Exception) {
                                 Log.e(TAG, "Error in image analysis", e)
+                                imageProxy.close()
                             }
                         }
                     }
 
-                // Add ImageCapture use case for actual photo capture
+                // Configure ImageCapture for actual photo capture
                 val displayMetrics = resources.displayMetrics
                 val phoneWidth = displayMetrics.widthPixels
 
-                @Suppress("DEPRECATION")
                 imageCapture = ImageCapture.Builder()
-                    .setTargetResolution(Size(phoneWidth, phoneWidth)) // Try square first
+                    .setTargetResolution(Size(phoneWidth, phoneWidth)) // Square format
                     .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
                     .build()
-
-                Log.d(TAG, "ImageCapture configured for ${phoneWidth}x${phoneWidth} target square format")
 
                 val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
 
                 try {
                     cameraProvider.unbindAll()
-                    // Bind all three use cases: Preview, ImageAnalysis, and ImageCapture
-                    cameraProvider.bindToLifecycle(
+                    // Bind all three use cases
+                    camera = cameraProvider.bindToLifecycle(
                         this,
                         cameraSelector,
                         preview,
-                        imageAnalyzer,
+                        imageAnalysis,
                         imageCapture
                     )
-                    Log.d(TAG, "Camera bound successfully with ImageCapture")
                 } catch (exc: Exception) {
                     Log.e(TAG, "Camera binding failed", exc)
                     safeShowMessage("Camera binding failed: ${exc.message}")
@@ -200,35 +217,29 @@ class CameraFragment : Fragment() {
     }
 
     /**
-     * Capture the current camera frame and return it as a bitmap
+     * Capture the current camera frame and return it as a properly oriented bitmap.
+     * Called by DetectionViewModel when a letter needs to be recorded.
      */
     fun captureCurrentFrame(callback: (Bitmap?) -> Unit) {
-        // Check if fragment is still attached
+        // Validate fragment state
         if (!isAdded || _binding == null) {
-            Log.w(TAG, "Fragment not attached, cannot capture frame")
             callback(null)
             return
         }
 
         val imageCapture = imageCapture ?: run {
-            Log.e(TAG, "ImageCapture not initialized")
             callback(null)
             return
         }
 
-        Log.d(TAG, "Capturing current camera frame...")
-
         try {
-            // Check if context is still available
             val context = context ?: run {
-                Log.w(TAG, "Context not available for capture")
                 callback(null)
                 return
             }
 
-            // Create a temporary file for the image
+            // Create temporary file for capture
             val tempFile = File(context.cacheDir, "temp_capture_${System.currentTimeMillis()}.jpg")
-
             val outputFileOptions = ImageCapture.OutputFileOptions.Builder(tempFile).build()
 
             imageCapture.takePicture(
@@ -236,28 +247,24 @@ class CameraFragment : Fragment() {
                 ContextCompat.getMainExecutor(context),
                 object : ImageCapture.OnImageSavedCallback {
                     override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                        Log.d(TAG, "Image capture succeeded: ${tempFile.absolutePath}")
-
                         try {
-                            // Load the captured image as bitmap
+                            // Load and process the captured image
                             var bitmap = BitmapFactory.decodeFile(tempFile.absolutePath)
 
                             if (bitmap != null) {
-                                Log.d(TAG, "Original captured image: ${bitmap.width}x${bitmap.height}")
+                                // Apply proper orientation correction for front camera
+                                val correctedBitmap = correctImageOrientation(bitmap)
 
-                                // Mirror the bitmap for front camera (to match preview)
-                                val mirroredBitmap = mirrorBitmap(bitmap)
-                                bitmap.recycle()
-                                bitmap = mirroredBitmap
+                                if (correctedBitmap != bitmap) {
+                                    bitmap.recycle()
+                                }
 
-                                Log.d(TAG, "✅ Successfully captured and mirrored bitmap: ${bitmap.width}x${bitmap.height}")
-                                callback(bitmap)
+                                callback(correctedBitmap)
                             } else {
-                                Log.e(TAG, "Failed to decode captured image")
                                 callback(null)
                             }
 
-                            // Clean up temp file
+                            // Clean up temporary file
                             tempFile.delete()
 
                         } catch (e: Exception) {
@@ -280,21 +287,42 @@ class CameraFragment : Fragment() {
         }
     }
 
-    private fun mirrorBitmap(bitmap: Bitmap): Bitmap {
-        val matrix = Matrix().apply {
-            preScale(-1.0f, 1.0f)
+    /**
+     * Correct image orientation for front camera capture.
+     * Handles rotation and mirroring to match what user sees in preview.
+     */
+    private fun correctImageOrientation(bitmap: Bitmap): Bitmap {
+        return try {
+            val matrix = Matrix().apply {
+                // Counter-rotate by 90° to fix the 270° camera rotation
+                postRotate(-90f, bitmap.width / 2f, bitmap.height / 2f)
+                // Mirror for front camera (flip horizontally)
+                postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f)
+            }
+
+            val correctedBitmap = Bitmap.createBitmap(
+                bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
+            )
+
+            correctedBitmap
+        } catch (e: Exception) {
+            Log.e(TAG, "Error correcting image orientation, using original", e)
+            bitmap
         }
-        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, false)
     }
 
+    /**
+     * Check if camera permission is granted
+     */
     private fun allPermissionsGranted() = ContextCompat.checkSelfPermission(
         requireContext(), Manifest.permission.CAMERA
     ) == PackageManager.PERMISSION_GRANTED
 
+    /**
+     * Safely show message only if fragment is still attached
+     */
     private fun safeShowMessage(message: String) {
-        Log.d(TAG, "Message: $message")
         try {
-            // Only show message if fragment is still attached
             if (isAdded && context != null) {
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
             }
@@ -309,14 +337,16 @@ class CameraFragment : Fragment() {
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.d(TAG, "onDestroy called")
-        cameraExecutor.shutdown()
-        handLandmarkerHelper?.clearHandLandmarker()
+        try {
+            cameraExecutor.shutdown()
+            handLandmarkerHelper?.clearHandLandmarker()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in onDestroy", e)
+        }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
-        Log.d(TAG, "onDestroyView called")
         _binding = null
     }
 }

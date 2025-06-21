@@ -11,26 +11,27 @@ import com.example.signtranslator.R
 import com.example.signtranslator.databinding.FragmentHomeBinding
 import com.example.signtranslator.viewmodels.DetectionViewModel
 
+/**
+ * Main container fragment for the sign language detection interface.
+ * Manages layout with camera (top 2/3) and controls (bottom 1/3).
+ * Hosts CameraFragment and ControlsFragment as child fragments.
+ */
 class HomeFragment : Fragment() {
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
-
-    private val detectionViewModel: DetectionViewModel by activityViewModels()
 
     companion object {
         private const val TAG = "HomeFragment"
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        Log.d(TAG, "onCreateView called")
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        Log.d(TAG, "onViewCreated called")
 
         try {
             setupChildFragments()
@@ -39,41 +40,30 @@ class HomeFragment : Fragment() {
         }
     }
 
+    /**
+     * Initialize and add child fragments for camera and controls
+     */
     private fun setupChildFragments() {
-        Log.d(TAG, "Setting up child fragments")
-
         try {
-            // Add camera fragment
+            // Add camera fragment to top container (2/3 of screen)
             val cameraFragment = CameraFragment()
             childFragmentManager.beginTransaction()
                 .replace(R.id.cameraContainer, cameraFragment)
                 .commitAllowingStateLoss()
 
-            // Add controls fragment
+            // Add controls fragment to bottom container (1/3 of screen)
             val controlsFragment = ControlsFragment()
             childFragmentManager.beginTransaction()
                 .replace(R.id.controlsContainer, controlsFragment)
                 .commitAllowingStateLoss()
 
-            Log.d(TAG, "Child fragments added successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error adding child fragments", e)
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        Log.d(TAG, "onResume called")
-    }
-
-    override fun onPause() {
-        super.onPause()
-        Log.d(TAG, "onPause called")
-    }
-
     override fun onDestroyView() {
         super.onDestroyView()
-        Log.d(TAG, "onDestroyView called")
         _binding = null
     }
 }

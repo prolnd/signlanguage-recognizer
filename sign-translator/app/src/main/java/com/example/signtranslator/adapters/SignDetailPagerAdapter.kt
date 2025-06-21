@@ -1,7 +1,6 @@
 package com.example.signtranslator.adapters
 
 import android.graphics.Bitmap
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
@@ -10,13 +9,13 @@ import com.example.signtranslator.models.SignHistoryEntry
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * ViewPager2 adapter for displaying detailed sign entries in swipeable pages.
+ * Each page shows a large sign image, letter, confidence, and detection details.
+ */
 class SignDetailPagerAdapter(
     private val signEntries: List<SignHistoryEntry>
 ) : RecyclerView.Adapter<SignDetailPagerAdapter.SignDetailPageViewHolder>() {
-
-    companion object {
-        private const val TAG = "SignDetailPagerAdapter"
-    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SignDetailPageViewHolder {
         val binding = ItemSignDetailPageBinding.inflate(
@@ -36,59 +35,53 @@ class SignDetailPagerAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(entry: SignHistoryEntry) {
-            Log.d(TAG, "Binding sign detail: '${entry.sign}' with bitmap: ${entry.bestFrame.bitmap?.let { "${it.width}x${it.height}" } ?: "null"}")
-
             // Display the captured image (large)
-            val bitmap = entry.bestFrame.bitmap
+            val bitmap = entry.signFrame.bitmap
             if (bitmap != null && !bitmap.isRecycled) {
-                Log.d(TAG, "Setting valid bitmap: ${bitmap.width}x${bitmap.height}")
                 binding.ivSignImage.setImageBitmap(bitmap)
                 binding.ivSignImage.alpha = 1.0f
-
-                // Ensure ImageView is properly configured
                 binding.ivSignImage.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
                 binding.ivSignImage.visibility = android.view.View.VISIBLE
-
             } else {
-                Log.w(TAG, "Bitmap is null or recycled, creating placeholder")
+                // Create placeholder if bitmap is unavailable
                 val placeholderBitmap = createPlaceholderBitmap(entry.sign)
                 binding.ivSignImage.setImageBitmap(placeholderBitmap)
                 binding.ivSignImage.alpha = 0.7f
             }
 
-            // Display the sign letter (large)
+            // Display the sign letter
             binding.tvSignLetter.text = entry.sign.uppercase()
 
-            // Display confidence with color coding and background
-            val confidencePercent = (entry.bestFrame.confidence * 100).toInt()
+            // Display confidence with color coding
+            val confidencePercent = (entry.signFrame.confidence * 100).toInt()
             binding.tvConfidence.text = "Confidence: $confidencePercent%"
 
-            // Set confidence color
-            when {
-                entry.bestFrame.confidence > 0.8f -> {
-                    binding.tvConfidence.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
-                    binding.tvConfidence.setBackgroundColor(android.graphics.Color.parseColor("#E8F5E8"))
-                }
-                entry.bestFrame.confidence > 0.6f -> {
-                    binding.tvConfidence.setTextColor(android.graphics.Color.parseColor("#FF9800"))
-                    binding.tvConfidence.setBackgroundColor(android.graphics.Color.parseColor("#FFF3E0"))
-                }
-                else -> {
-                    binding.tvConfidence.setTextColor(android.graphics.Color.parseColor("#F44336"))
-                    binding.tvConfidence.setBackgroundColor(android.graphics.Color.parseColor("#FFEBEE"))
-                }
-            }
+            // Apply confidence-based styling
+            applyConfidenceColors(entry.signFrame.confidence)
 
-            // Add padding to confidence text
-            binding.tvConfidence.setPadding(16, 8, 16, 8)
-
-            // Display timestamp
+            // Display detection metadata
             binding.tvTimestamp.text = "Detected: ${formatTimestamp(entry.timestamp)}"
-
-            // Display frame info
-            binding.tvFrameInfo.text = "${entry.allFrames.size} frame(s) captured"
+            binding.tvFrameInfo.text = "Frame captured"
         }
 
+        /**
+         * Apply color coding based on confidence level
+         */
+        private fun applyConfidenceColors(confidence: Float) {
+            val (textColor, backgroundColor) = when {
+                confidence > 0.8f -> Pair("#4CAF50", "#E8F5E8") // Green
+                confidence > 0.6f -> Pair("#FF9800", "#FFF3E0") // Orange
+                else -> Pair("#F44336", "#FFEBEE") // Red
+            }
+
+            binding.tvConfidence.setTextColor(android.graphics.Color.parseColor(textColor))
+            binding.tvConfidence.setBackgroundColor(android.graphics.Color.parseColor(backgroundColor))
+            binding.tvConfidence.setPadding(16, 8, 16, 8)
+        }
+
+        /**
+         * Create placeholder bitmap when original image is not available
+         */
         private fun createPlaceholderBitmap(sign: String): Bitmap {
             val size = 300
             val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
@@ -122,10 +115,12 @@ class SignDetailPagerAdapter(
             }
             canvas.drawRect(4f, 4f, size - 4f, size - 4f, borderPaint)
 
-            Log.d(TAG, "Created placeholder bitmap for sign: $sign")
             return bitmap
         }
 
+        /**
+         * Format timestamp for detailed view (time only)
+         */
         private fun formatTimestamp(timestamp: Long): String {
             val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
             return sdf.format(Date(timestamp))
