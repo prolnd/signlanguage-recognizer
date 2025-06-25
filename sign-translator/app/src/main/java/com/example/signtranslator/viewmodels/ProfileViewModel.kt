@@ -133,7 +133,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     /**
      * Sign out current user
      */
-    suspend fun signOut() {
+    fun signOut() {
         try {
             auth.signOut()
             _authState.value = AuthState.SignedOut

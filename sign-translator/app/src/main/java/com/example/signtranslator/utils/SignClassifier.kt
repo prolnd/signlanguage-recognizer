@@ -74,10 +74,6 @@ class SignClassifier(private val context: Context) {
         }
     }
 
-    /**
-     * Check if the classifier is ready for use
-     */
-    fun isReady(): Boolean = interpreter != null && signClasses.isNotEmpty()
 
     /**
      * Clean up resources

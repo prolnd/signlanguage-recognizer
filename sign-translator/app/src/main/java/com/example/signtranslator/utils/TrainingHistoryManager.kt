@@ -153,7 +153,7 @@ class TrainingHistoryManager(private val context: Context) {
     /**
      * Delete a training session
      */
-    fun deleteSession(sessionId: String): Boolean {
+    suspend fun  deleteSession(sessionId: String): Boolean {
         val session = trainingList.find { it.id == sessionId } ?: return false
 
         // Remove locally
@@ -164,7 +164,7 @@ class TrainingHistoryManager(private val context: Context) {
         if (firebaseAuth.isSignedIn()) {
             firebaseAuth.getUserId()?.let { userId ->
                 CoroutineScope(Dispatchers.IO).launch {
-                    firebaseTraining.deleteSessionFromCloud(userId, sessionId)
+                    firebaseTraining.deleteSessionFromCloud(sessionId)
                 }
             }
         }
@@ -258,16 +258,6 @@ class TrainingHistoryManager(private val context: Context) {
         }
     }
 
-    /**
-     * Clear stored training data
-     */
-    private fun clearStoredTraining() {
-        sharedPrefs.edit()
-            .remove(TRAINING_HISTORY_KEY)
-            .remove(INITIAL_SYNC_KEY)
-            .apply()
-        hasPerformedInitialSync = false
-    }
 
     /**
      * Data class for training statistics

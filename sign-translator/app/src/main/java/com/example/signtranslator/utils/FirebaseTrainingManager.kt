@@ -97,7 +97,7 @@ class FirebaseTrainingManager {
     /**
      * Delete a training session from the cloud
      */
-    suspend fun deleteSessionFromCloud(userId: String, sessionId: String): Boolean {
+    suspend fun deleteSessionFromCloud( sessionId: String): Boolean {
         return try {
             firestore.collection(COLLECTION_TRAINING)
                 .document(sessionId)

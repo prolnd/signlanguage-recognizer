@@ -73,11 +73,6 @@ class ControlsFragment : Fragment() {
             Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
         }
 
-        detectionViewModel.historyUpdated.observe(viewLifecycleOwner) { updated ->
-            if (updated) {
-               // Toast.makeText(requireContext(), "Translation saved to history!", Toast.LENGTH_SHORT).show()
-            }
-        }
     }
 
     /**
@@ -136,11 +131,6 @@ class ControlsFragment : Fragment() {
      */
     private fun updateSentenceDisplay(sentence: String) {
         binding.tvSentence.text = "Sentence: $sentence"
-
-        // Ensure proper letter spacing
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-            binding.tvSentence.letterSpacing = 0f
-        }
     }
 
     /**
