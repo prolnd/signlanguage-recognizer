@@ -195,7 +195,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                             addedCount++
                         }
                     } catch (e: Exception) {
-                        // Continue with other translations
+                        _errorMessage.value = "A transaction failed: ${e.message}"
                     }
                 }
 
@@ -241,7 +241,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 _syncInfo.value = syncInfo
 
             } catch (e: Exception) {
-                // Handle sync info update errors silently
+                _errorMessage.value = "Update failed: ${e.message}"
             }
         }
     }

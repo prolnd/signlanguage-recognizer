@@ -1,5 +1,6 @@
 package com.example.signtranslator.utils
 
+import android.util.Log
 import com.example.signtranslator.models.TrainingSession
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -15,6 +16,7 @@ class FirebaseTrainingManager {
 
     companion object {
         private const val COLLECTION_TRAINING = "training_sessions"
+        private const val TAG = "FirebaseTrainingManager"
     }
 
     /**
@@ -43,6 +45,7 @@ class FirebaseTrainingManager {
 
             true
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to sync session ${session.id} to cloud", e)
             false
         }
     }
@@ -68,7 +71,7 @@ class FirebaseTrainingManager {
                             val letterChar = (letterMap["letter"] as? String)?.firstOrNull() ?: return@mapNotNull null
                             val imageResourceId = (letterMap["imageResourceId"] as? Long)?.toInt() ?: return@mapNotNull null
 
-                            com.example.signtranslator.models.TrainingLetter(
+                            com.example.signtranslator.models.SignLetter(
                                 letter = letterChar,
                                 imageResourceId = imageResourceId
                             )
@@ -84,12 +87,14 @@ class FirebaseTrainingManager {
                         timestamp = data["timestamp"] as? Long ?: System.currentTimeMillis()
                     )
                 } catch (e: Exception) {
+
                     null
                 }
             }
 
             sessions
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to load training sessions from cloud for user $userId", e)
             emptyList()
         }
     }
@@ -106,36 +111,9 @@ class FirebaseTrainingManager {
 
             true
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete session $sessionId from cloud", e)
             false
         }
     }
 
-    /**
-     * Sync all local training sessions to the cloud
-     */
-    suspend fun syncAllLocalSessions(userId: String, localSessions: List<TrainingSession>): SyncResult {
-        var successCount = 0
-        var errorCount = 0
-
-        for (session in localSessions) {
-            if (syncSessionToCloud(userId, session)) {
-                successCount++
-            } else {
-                errorCount++
-            }
-        }
-
-        return SyncResult(successCount, errorCount)
-    }
-
-    /**
-     * Result of a synchronization operation
-     */
-    data class SyncResult(
-        val successCount: Int,
-        val errorCount: Int
-    ) {
-        val isFullSuccess: Boolean get() = errorCount == 0
-        val hasErrors: Boolean get() = errorCount > 0
-    }
 }

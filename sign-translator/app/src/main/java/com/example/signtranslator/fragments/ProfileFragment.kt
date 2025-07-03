@@ -35,8 +35,6 @@ class ProfileFragment : Fragment() {
     private lateinit var syncStatusText: TextView
 
     // Usage statistics views
-    private lateinit var trainingSessionsText: TextView
-    private lateinit var trainingLettersText: TextView
     private lateinit var translationsText: TextView
     private lateinit var translationSignsText: TextView
 

@@ -37,7 +37,32 @@
         android:id="@+id/practiceFragment"
         android:name="com.example.signtranslator.fragments.PracticeFragment"
         android:label="Practice"
-        tools:layout="@layout/fragment_practice" />
+        tools:layout="@layout/fragment_practice">
+
+    <action
+        android:id="@+id/action_practice_to_detail"
+        app:destination="@id/practiceDetailFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/practiceDetailFragment"
+        android:name="com.example.signtranslator.fragments.PracticeDetailFragment"
+        android:label="Practice Details"
+        tools:layout="@layout/fragment_practice_detail">
+
+        <argument
+            android:name="sentence"
+            app:argType="string"
+            app:nullable="true" />
+        <argument
+            android:name="sessionId"
+            app:argType="string"
+            app:nullable="true" />
+        <argument
+            android:name="isResuming"
+            app:argType="boolean"
+            android:defaultValue="false" />
+    </fragment>
 
     <fragment
         android:id="@+id/profileFragment"

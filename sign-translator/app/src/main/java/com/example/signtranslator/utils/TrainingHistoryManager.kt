@@ -3,7 +3,7 @@ package com.example.signtranslator.utils
 import android.content.Context
 import android.content.SharedPreferences
 import com.example.signtranslator.models.TrainingSession
-import com.example.signtranslator.models.TrainingLetter
+import com.example.signtranslator.models.SignLetter
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
@@ -44,7 +44,7 @@ class TrainingHistoryManager(private val context: Context) {
     /**
      * Add a new training session to history
      */
-    fun addTrainingSession(sentence: String, letters: List<TrainingLetter>) {
+    fun addTrainingSession(sentence: String, letters: List<SignLetter>) {
         if (sentence.isBlank() || letters.isEmpty()) return
 
         val session = TrainingSession(
@@ -146,14 +146,14 @@ class TrainingHistoryManager(private val context: Context) {
             saveTrainingToStorage()
 
         } catch (e: Exception) {
-            throw e // Re-throw for UI error handling
+            throw e
         }
     }
 
     /**
      * Delete a training session
      */
-    suspend fun  deleteSession(sessionId: String): Boolean {
+    fun  deleteSession(sessionId: String): Boolean {
         val session = trainingList.find { it.id == sessionId } ?: return false
 
         // Remove locally
@@ -172,13 +172,6 @@ class TrainingHistoryManager(private val context: Context) {
         return true
     }
 
-
-    /**
-     * Get a specific training session by ID
-     */
-    fun getSession(id: String): TrainingSession? {
-        return trainingList.find { it.id == id }
-    }
 
     /**
      * Get training statistics

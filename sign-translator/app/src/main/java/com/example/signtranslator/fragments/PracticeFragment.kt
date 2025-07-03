@@ -6,34 +6,28 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.viewpager2.widget.ViewPager2
 import com.example.signtranslator.R
-import com.example.signtranslator.adapters.SignTrainerAdapter
 import com.example.signtranslator.adapters.TrainingHistoryAdapter
 import com.example.signtranslator.viewmodels.PracticeViewModel
 
 /**
  * Fragment for sign language practice functionality.
- * Features text-to-sign conversion, swipeable letter gallery, and training history.
- * Allows users to practice signing by viewing ASL letter references.
+ * Shows input section for text entry and history of previous practice sessions.
+ * Navigates to PracticeDetailFragment for actual practice slideshow.
  */
 class PracticeFragment : Fragment() {
 
-    private lateinit var viewModel: PracticeViewModel
+    private val viewModel: PracticeViewModel by activityViewModels()
 
     // Input section views
     private lateinit var inputEditText: EditText
     private lateinit var generateButton: Button
     private lateinit var inputContainer: LinearLayout
 
-    // Practice slideshow views
-    private lateinit var viewPager: ViewPager2
-    private lateinit var pageIndicator: TextView
-    private lateinit var backButton: Button
-    private lateinit var saveButton: Button
-    private lateinit var slideshowContainer: LinearLayout
 
     // History section views
     private lateinit var historyRecyclerView: androidx.recyclerview.widget.RecyclerView
@@ -42,7 +36,6 @@ class PracticeFragment : Fragment() {
 
     // Status and adapters
     private lateinit var syncStatusText: TextView
-    private lateinit var signAdapter: SignTrainerAdapter
     private lateinit var historyAdapter: TrainingHistoryAdapter
 
     override fun onCreateView(
@@ -57,10 +50,10 @@ class PracticeFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         initViews(view)
-        initViewModel()
         setupAdapters()
         setupObservers()
         setupClickListeners()
+        loadHistory()
     }
 
     /**
@@ -72,13 +65,6 @@ class PracticeFragment : Fragment() {
         generateButton = view.findViewById(R.id.generate_button)
         inputContainer = view.findViewById(R.id.input_container)
 
-        // Practice slideshow
-        viewPager = view.findViewById(R.id.practice_view_pager)
-        pageIndicator = view.findViewById(R.id.page_indicator)
-        backButton = view.findViewById(R.id.back_button)
-        saveButton = view.findViewById(R.id.save_button)
-        slideshowContainer = view.findViewById(R.id.slideshow_container)
-
         // History section
         historyRecyclerView = view.findViewById(R.id.history_recycler_view)
         historyContainer = view.findViewById(R.id.history_container)
@@ -89,35 +75,19 @@ class PracticeFragment : Fragment() {
     }
 
     /**
-     * Initialize ViewModel
-     */
-    private fun initViewModel() {
-        viewModel = ViewModelProvider(this)[PracticeViewModel::class.java]
-    }
-
-    /**
-     * Setup RecyclerView and ViewPager adapters
+     * Setup RecyclerView adapter
      */
     private fun setupAdapters() {
-        // Sign slideshow adapter for practice mode
-        signAdapter = SignTrainerAdapter()
-        viewPager.adapter = signAdapter
-
-        // Handle page changes in practice slideshow
-        viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
-            override fun onPageSelected(position: Int) {
-                super.onPageSelected(position)
-                updatePageIndicator(position)
-                viewModel.onPageChanged(position)
-            }
-        })
-
         // Training history adapter
         historyAdapter = TrainingHistoryAdapter(
             onItemClick = { session ->
-                // Load session for practice
-                viewModel.loadHistorySession(session)
-                inputEditText.setText(session.sentence)
+                // Navigate to practice detail with existing session
+                val bundle = Bundle().apply {
+                    putString("sessionId", session.id)
+                    putString("sentence", session.sentence)
+                    putBoolean("isResuming", true)
+                }
+                findNavController().navigate(R.id.action_practice_to_detail, bundle)
             },
             onItemLongClick = { session ->
                 showDeleteDialog(session.id, session.sentence)
@@ -135,17 +105,6 @@ class PracticeFragment : Fragment() {
      * Observe ViewModel changes and update UI
      */
     private fun setupObservers() {
-        viewModel.signLetters.observe(viewLifecycleOwner) { letters ->
-            signAdapter.updateLetters(letters)
-            updateViewState(letters.isNotEmpty())
-        }
-
-        viewModel.currentPosition.observe(viewLifecycleOwner) { position ->
-            if (position != viewPager.currentItem) {
-                viewPager.setCurrentItem(position, true)
-            }
-        }
-
         viewModel.trainingHistory.observe(viewLifecycleOwner) { sessions ->
             historyAdapter.submitList(sessions)
             updateHistoryVisibility(sessions.isNotEmpty())
@@ -169,69 +128,35 @@ class PracticeFragment : Fragment() {
         generateButton.setOnClickListener {
             val sentence = inputEditText.text.toString().trim()
             if (sentence.isNotEmpty()) {
-                viewModel.generatePractice(sentence)
+                // Navigate to practice detail with new session
+                val bundle = Bundle().apply {
+                    putString("sentence", sentence)
+                    putBoolean("isResuming", false)
+                }
+                findNavController().navigate(R.id.action_practice_to_detail, bundle)
             } else {
                 Toast.makeText(context, "Please enter something to practice", Toast.LENGTH_SHORT).show()
             }
         }
-
-        backButton.setOnClickListener {
-            // Exit practice mode and return to input/history view
-            viewModel.exitPractice()
-            inputEditText.text.clear()
-        }
-
-        saveButton.setOnClickListener {
-            viewModel.saveCurrentSession()
-            Toast.makeText(context, "Practice session saved!", Toast.LENGTH_SHORT).show()
-        }
     }
 
     /**
-     * Update UI state based on practice mode
+     * Load history from ViewModel
      */
-    private fun updateViewState(inPracticeMode: Boolean) {
-        if (inPracticeMode) {
-            // Show practice slideshow
-            historyContainer.visibility = View.GONE
-            emptyState.visibility = View.GONE
-            slideshowContainer.visibility = View.VISIBLE
-
-            // Update controls for practice mode
-            generateButton.text = "🔄 Practice Again"
-            backButton.visibility = View.VISIBLE
-            saveButton.visibility = View.VISIBLE
-
-            updatePageIndicator(0)
-        } else {
-            // Show input and history
-            slideshowContainer.visibility = View.GONE
-            historyContainer.visibility = View.VISIBLE
-
-            // Reset controls to input mode
-            generateButton.text = "📚 Start"
-            backButton.visibility = View.GONE
-            saveButton.visibility = View.GONE
-        }
+    private fun loadHistory() {
+        viewModel.loadHistory()
     }
 
     /**
      * Show/hide empty state based on history availability
      */
     private fun updateHistoryVisibility(hasHistory: Boolean) {
-        if (!hasHistory && slideshowContainer.visibility == View.GONE) {
+        if (hasHistory) {
+            historyContainer.visibility = View.VISIBLE
+            emptyState.visibility = View.GONE
+        } else {
             historyContainer.visibility = View.GONE
             emptyState.visibility = View.VISIBLE
-        }
-    }
-
-    /**
-     * Update page indicator text
-     */
-    private fun updatePageIndicator(position: Int) {
-        val total = signAdapter.itemCount
-        if (total > 0) {
-            pageIndicator.text = "Letter ${position + 1} of $total"
         }
     }
 
@@ -247,5 +172,11 @@ class PracticeFragment : Fragment() {
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Refresh history when returning to this fragment
+        loadHistory()
     }
 }

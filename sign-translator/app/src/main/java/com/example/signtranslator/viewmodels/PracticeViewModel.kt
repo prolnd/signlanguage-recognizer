@@ -7,7 +7,6 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.signtranslator.R
 import com.example.signtranslator.models.SignLetter
-import com.example.signtranslator.models.TrainingLetter
 import com.example.signtranslator.models.TrainingSession
 import com.example.signtranslator.utils.TrainingHistoryManager
 import com.example.signtranslator.utils.FirebaseAuthManager
@@ -97,21 +96,23 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     /**
      * Load a previous training session for practice
      */
-    fun loadHistorySession(session: TrainingSession) {
-        val letters = session.letters.map { trainingLetter ->
-            SignLetter(trainingLetter.letter, trainingLetter.imageResourceId)
-        }
+    fun loadHistorySession(sessionId: String) {
+        val session = findSessionById(sessionId)
+        if (session != null) {
+            val letters = session.letters.map { trainingLetter ->
+                SignLetter(trainingLetter.letter, trainingLetter.imageResourceId)
+            }
 
-        if (letters.isNotEmpty()) {
-            startNewSession(session.sentence, letters)
+            if (letters.isNotEmpty()) {
+                startNewSession(session.sentence, letters)
+            }
+        } else {
+            _errorMessage.value = "Session not found"
         }
     }
 
-    /**
-     * Exit practice mode without saving
-     */
-    fun exitPractice() {
-        clearPracticeMode()
+    private fun findSessionById(sessionId: String): TrainingSession? {
+        return _trainingHistory.value?.find { it.id == sessionId }
     }
 
     /**
@@ -136,6 +137,8 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
                 loadHistory()
             }
         }
+
+        loadHistory()
     }
 
     /**
@@ -201,13 +204,13 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     /**
      * Save current session to training history
      */
-    private suspend fun saveSessionToHistory() {
+    private fun saveSessionToHistory() {
         val letters = _signLetters.value
         if (currentSentence.isNotEmpty() && letters != null && letters.isNotEmpty()) {
 
             // Create training letters
-            val trainingLetters = letters.map { signLetter ->
-                TrainingLetter(
+            val signLetters = letters.map { signLetter ->
+                SignLetter(
                     letter = signLetter.letter,
                     imageResourceId = signLetter.imageResourceId
                 )
@@ -216,22 +219,11 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
             // Save to training history manager
             trainingHistoryManager.addTrainingSession(
                 sentence = currentSentence,
-                letters = trainingLetters
+                letters = signLetters
             )
 
             updateSyncStatus()
         }
     }
 
-    /**
-     * Clear practice mode and reset state
-     */
-    private fun clearPracticeMode() {
-        isInPracticeMode = false
-        currentSentence = ""
-        sessionStartTime = 0
-
-        _signLetters.value = emptyList()
-        _currentPosition.value = 0
-    }
 }
